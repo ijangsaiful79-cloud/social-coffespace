@@ -34,45 +34,64 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
     })
   }, [])
 
-  async function handleGPSVerify() {
+  function handleGPSVerify() {
     setStep('verifying')
     setGpsError(null)
 
     if (!navigator.geolocation) {
-      setGpsError('Browser kamu tidak mendukung GPS.')
+      setGpsError('Browser kamu tidak mendukung GPS. Coba pakai Chrome.')
       setStep('failed')
       return
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords
-        const verified = isWithinRadius(
-          latitude,
-          longitude,
-          shop.latitude,
-          shop.longitude,
-          shop.radius_meter
-        )
+    const onSuccess = (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords
+      const verified = isWithinRadius(
+        latitude,
+        longitude,
+        shop.latitude,
+        shop.longitude,
+        shop.radius_meter
+      )
 
-        if (!verified) {
-          setGpsError(`Kamu terlalu jauh dari ${shop.name}. Pastikan kamu berada di dalam coffee shop.`)
-          setStep('failed')
-          return
-        }
-
-        setStep('identity')
-      },
-      (error) => {
-        setGpsError(
-          error.code === 1
-            ? 'Akses GPS ditolak. Izinkan akses lokasi dulu.'
-            : 'Tidak bisa mendapatkan lokasi. Coba lagi.'
-        )
+      if (!verified) {
+        setGpsError(`Kamu terlalu jauh dari ${shop.name}. Pastikan kamu berada di dalam coffee shop.`)
         setStep('failed')
-      },
-      { timeout: 10000, maximumAge: 0 }
-    )
+        return
+      }
+
+      setStep('identity')
+    }
+
+    const onError = (error: GeolocationPositionError) => {
+      if (error.code === 1) {
+        setGpsError('Akses lokasi ditolak. Buka Pengaturan → Safari → Lokasi → Izinkan, lalu coba lagi.')
+      } else if (error.code === 2) {
+        setGpsError('Sinyal GPS lemah. Pastikan kamu di luar ruangan sebentar atau aktifkan WiFi untuk bantu lokasi.')
+      } else {
+        setGpsError('Waktu habis saat mengambil lokasi. Pastikan GPS aktif lalu coba lagi.')
+      }
+      setStep('failed')
+    }
+
+    // Pertama coba dengan akurasi tinggi
+    navigator.geolocation.getCurrentPosition(onSuccess, (firstError) => {
+      if (firstError.code === 1) {
+        // Permission denied — langsung kasih error, jangan retry
+        onError(firstError)
+        return
+      }
+      // Timeout atau unavailable — fallback ke akurasi rendah + cache
+      navigator.geolocation.getCurrentPosition(onSuccess, onError, {
+        enableHighAccuracy: false,
+        timeout: 20000,
+        maximumAge: 60000,
+      })
+    }, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 30000,
+    })
   }
 
   async function handleJoin(name: string) {
