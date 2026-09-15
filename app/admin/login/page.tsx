@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { adminLogin } from './actions'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -16,29 +16,10 @@ export default function AdminLoginPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
+    const result = await adminLogin(email, password)
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (authError || !data.user) {
-      setError('Email atau password salah.')
-      setLoading(false)
-      return
-    }
-
-    // Cek apakah user ini admin
-    const { data: adminData } = await supabase
-      .from('admin_users')
-      .select('id')
-      .eq('user_id', data.user.id)
-      .single()
-
-    if (!adminData) {
-      await supabase.auth.signOut()
-      setError('Akun ini tidak memiliki akses admin.')
+    if (result.error) {
+      setError(result.error)
       setLoading(false)
       return
     }
