@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import ResolveButton from './ResolveButton'
 
 export default async function AdminReportsPage() {
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
 
   const { data: reports } = await supabase
     .from('reports')

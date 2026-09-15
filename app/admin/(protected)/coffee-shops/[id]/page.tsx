@@ -9,7 +9,7 @@ interface Props {
 
 export default async function CoffeeShopDetailPage({ params }: Props) {
   const { id } = await params
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
 
   const { data: shop } = await supabase
     .from('coffee_shops')

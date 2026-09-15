@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
   const body = await request.json()
 
   const { name, address, latitude, longitude, radius_meter, access_token, slug } = body

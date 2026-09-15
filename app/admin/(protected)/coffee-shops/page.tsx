@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
 
 export default async function CoffeeShopsPage() {
-  const supabase = await createAdminClient()
+  const supabase = createAdminClient()
 
   const { data: shops } = await supabase
     .from('coffee_shops')

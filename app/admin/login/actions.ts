@@ -13,7 +13,7 @@ export async function adminLogin(email: string, password: string) {
   }
 
   // Cek admin pakai service role (bypass RLS)
-  const adminSupabase = await createAdminClient()
+  const adminSupabase = createAdminClient()
   const { data: adminData } = await adminSupabase
     .from('admin_users')
     .select('id')

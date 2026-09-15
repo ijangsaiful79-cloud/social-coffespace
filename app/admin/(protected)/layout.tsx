@@ -8,7 +8,7 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
 
   if (!user) redirect('/admin/login')
 
-  const adminSupabase = await createAdminClient()
+  const adminSupabase = createAdminClient()
   const { data: adminData } = await adminSupabase
     .from('admin_users')
     .select('id')
