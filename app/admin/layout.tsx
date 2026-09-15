@@ -1,69 +1,25 @@
-'use client'
+import { redirect } from 'next/navigation'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
+import AdminSidebar from './AdminSidebar'
 
-import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-const navItems = [
-  { href: '/admin', label: '📊 Dashboard' },
-  { href: '/admin/coffee-shops', label: '☕ Coffee Shops' },
-  { href: '/admin/users', label: '👥 Users' },
-  { href: '/admin/reports', label: '🚩 Reports' },
-]
+  if (!user) redirect('/admin/login')
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-  const pathname = usePathname()
+  const adminSupabase = await createAdminClient()
+  const { data: adminData } = await adminSupabase
+    .from('admin_users')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
 
-  async function handleLogout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/admin/login')
-    router.refresh()
-  }
+  if (!adminData) redirect('/admin/login')
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
-      <aside className="w-full md:w-52 md:shrink-0 border-b md:border-b-0 md:border-r border-border bg-card px-4 py-4 md:py-6 flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible">
-        <div className="hidden md:flex items-center gap-2 mb-6 px-2">
-          <span className="text-xl">☕</span>
-          <span className="font-bold text-sm">Coffee Dating</span>
-        </div>
-
-        {navItems.map((item) => {
-          const isActive = pathname === item.href
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`shrink-0 px-3 py-2 rounded-lg text-sm transition whitespace-nowrap ${
-                isActive
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              {item.label}
-            </Link>
-          )
-        })}
-
-        {/* Logout — bottom on desktop, last on mobile */}
-        <div className="hidden md:block mt-auto pt-4 border-t border-border">
-          <button
-            onClick={handleLogout}
-            className="w-full px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-red-50 hover:text-red-600 transition text-left"
-          >
-            🚪 Logout
-          </button>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="md:hidden shrink-0 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-red-50 hover:text-red-600 transition whitespace-nowrap"
-        >
-          🚪 Logout
-        </button>
-      </aside>
-
+      <AdminSidebar />
       <main className="flex-1 p-4 md:p-8 bg-background overflow-auto">
         {children}
       </main>
