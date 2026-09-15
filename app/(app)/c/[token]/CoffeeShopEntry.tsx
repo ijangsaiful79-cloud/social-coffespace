@@ -16,19 +16,19 @@ interface Shop {
   is_active: boolean
 }
 
-type Step = 'welcome' | 'gps' | 'verifying' | 'failed' | 'auth'
+type Step = 'welcome' | 'gps' | 'verifying' | 'failed' | 'identity' | 'joining'
 
 export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('welcome')
   const [gpsError, setGpsError] = useState<string | null>(null)
+  const [displayName, setDisplayName] = useState('')
+  const [joinError, setJoinError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Check if user is already logged in
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        // Already logged in — go straight to GPS
         setStep('gps')
       }
     })
@@ -39,13 +39,13 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
     setGpsError(null)
 
     if (!navigator.geolocation) {
-      setGpsError('Your browser does not support GPS.')
+      setGpsError('Browser kamu tidak mendukung GPS.')
       setStep('failed')
       return
     }
 
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         const { latitude, longitude } = position.coords
         const verified = isWithinRadius(
           latitude,
@@ -56,71 +56,100 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
         )
 
         if (!verified) {
-          setGpsError(
-            `You are too far from ${shop.name}. Please make sure you are inside the coffee shop.`
-          )
+          setGpsError(`Kamu terlalu jauh dari ${shop.name}. Pastikan kamu berada di dalam coffee shop.`)
           setStep('failed')
           return
         }
 
-        // GPS verified — create session
-        const supabase = createClient()
-        const { data: user } = await supabase.auth.getUser()
-
-        if (!user.user) {
-          // Not logged in — redirect to auth with return url
-          router.push(`/login?redirect=/c/${shop.access_token}`)
-          return
-        }
-
-        const now = new Date()
-        const expiresAt = new Date(now.getTime() + 30 * 60 * 1000)
-
-        // Check for existing active session
-        const { data: existing } = await supabase
-          .from('coffee_shop_sessions')
-          .select('id')
-          .eq('user_id', user.user.id)
-          .eq('coffee_shop_id', shop.id)
-          .eq('status', 'active')
-          .gt('expires_at', now.toISOString())
-          .single()
-
-        if (existing) {
-          // Refresh existing session
-          await supabase
-            .from('coffee_shop_sessions')
-            .update({
-              last_active_at: now.toISOString(),
-              expires_at: expiresAt.toISOString(),
-              gps_verified: true,
-            })
-            .eq('id', existing.id)
-        } else {
-          // Create new session
-          await supabase.from('coffee_shop_sessions').insert({
-            user_id: user.user.id,
-            coffee_shop_id: shop.id,
-            joined_at: now.toISOString(),
-            last_active_at: now.toISOString(),
-            expires_at: expiresAt.toISOString(),
-            gps_verified: true,
-            status: 'active',
-          })
-        }
-
-        router.push(`/people?shop=${shop.id}`)
+        setStep('identity')
       },
       (error) => {
         setGpsError(
           error.code === 1
-            ? 'GPS permission denied. Please allow location access.'
-            : 'Could not get your location. Try again.'
+            ? 'Akses GPS ditolak. Izinkan akses lokasi dulu.'
+            : 'Tidak bisa mendapatkan lokasi. Coba lagi.'
         )
         setStep('failed')
       },
       { timeout: 10000, maximumAge: 0 }
     )
+  }
+
+  async function handleJoin(name: string) {
+    setStep('joining')
+    setJoinError(null)
+
+    const supabase = createClient()
+
+    // Sign in anonymously if not already logged in
+    let userId: string
+    const { data: existing } = await supabase.auth.getUser()
+    if (existing.user) {
+      userId = existing.user.id
+    } else {
+      const { data: anon, error: anonError } = await supabase.auth.signInAnonymously()
+      if (anonError || !anon.user) {
+        setJoinError('Gagal masuk. Coba lagi.')
+        setStep('identity')
+        return
+      }
+      userId = anon.user.id
+    }
+
+    // Upsert profile
+    await supabase.from('profiles').upsert({
+      user_id: userId,
+      display_name: name,
+      chat_enabled: true,
+    })
+
+    // Create or refresh coffee shop session
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + 30 * 60 * 1000)
+
+    const { data: existingSession } = await supabase
+      .from('coffee_shop_sessions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('coffee_shop_id', shop.id)
+      .eq('status', 'active')
+      .gt('expires_at', now.toISOString())
+      .single()
+
+    if (existingSession) {
+      await supabase
+        .from('coffee_shop_sessions')
+        .update({
+          last_active_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+          gps_verified: true,
+        })
+        .eq('id', existingSession.id)
+    } else {
+      await supabase.from('coffee_shop_sessions').insert({
+        user_id: userId,
+        coffee_shop_id: shop.id,
+        joined_at: now.toISOString(),
+        last_active_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        gps_verified: true,
+        status: 'active',
+      })
+    }
+
+    router.push(`/people?shop=${shop.id}`)
+  }
+
+  function handleAnonymous() {
+    const suffix = Math.floor(1000 + Math.random() * 9000)
+    handleJoin(`Anonim #${suffix}`)
+  }
+
+  function handleNameSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const name = displayName.trim()
+    if (!name) return
+    handleJoin(name)
   }
 
   return (
@@ -136,33 +165,13 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
         {step === 'welcome' && (
           <div className="space-y-4">
             <p className="text-center text-muted-foreground text-sm">
-              See who else is here right now and start a conversation.
+              Lihat siapa aja yang lagi di sini dan mulai ngobrol.
             </p>
             <button
-              onClick={() => setStep('auth')}
+              onClick={() => setStep('gps')}
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition"
             >
-              Join People Here
-            </button>
-          </div>
-        )}
-
-        {step === 'auth' && (
-          <div className="space-y-3">
-            <p className="text-center text-sm text-muted-foreground mb-2">
-              Sign in to continue
-            </p>
-            <button
-              onClick={() => router.push(`/login?redirect=/c/${shop.access_token}`)}
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => router.push(`/register?redirect=/c/${shop.access_token}`)}
-              className="w-full py-3 rounded-xl border border-border font-semibold hover:bg-muted transition"
-            >
-              Create Account
+              Gabung Sekarang
             </button>
           </div>
         )}
@@ -170,13 +179,13 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
         {step === 'gps' && (
           <div className="space-y-4">
             <div className="bg-muted rounded-xl p-4 text-center text-sm text-muted-foreground">
-              We need to verify you're inside <strong>{shop.name}</strong> before showing you People Here.
+              Kami perlu verifikasi bahwa kamu berada di <strong>{shop.name}</strong>.
             </div>
             <button
               onClick={handleGPSVerify}
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition"
             >
-              Verify My Location
+              Verifikasi Lokasi
             </button>
           </div>
         )}
@@ -184,7 +193,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
         {step === 'verifying' && (
           <div className="text-center space-y-3">
             <div className="text-3xl animate-pulse">📍</div>
-            <p className="text-muted-foreground text-sm">Checking your location...</p>
+            <p className="text-muted-foreground text-sm">Mengecek lokasi kamu...</p>
           </div>
         )}
 
@@ -197,8 +206,59 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
               onClick={() => setStep('gps')}
               className="w-full py-3 rounded-xl border border-border font-semibold hover:bg-muted transition"
             >
-              Try Again
+              Coba Lagi
             </button>
+          </div>
+        )}
+
+        {step === 'identity' && (
+          <div className="space-y-4">
+            <div className="text-center">
+              <p className="font-semibold text-base mb-1">Kamu mau tampil sebagai?</p>
+              <p className="text-sm text-muted-foreground">Pilih anonim atau masukkan namamu</p>
+            </div>
+
+            <button
+              onClick={handleAnonymous}
+              className="w-full py-3 rounded-xl border border-border font-semibold hover:bg-muted transition text-sm"
+            >
+              Anonim
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">atau</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            <form onSubmit={handleNameSubmit} className="space-y-3">
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Masukkan nama atau nickname"
+                maxLength={30}
+                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              />
+              <button
+                type="submit"
+                disabled={!displayName.trim()}
+                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition disabled:opacity-40"
+              >
+                Masuk dengan Nama Ini
+              </button>
+            </form>
+
+            {joinError && (
+              <p className="text-sm text-red-500 text-center">{joinError}</p>
+            )}
+          </div>
+        )}
+
+        {step === 'joining' && (
+          <div className="text-center space-y-3">
+            <div className="text-3xl animate-pulse">✨</div>
+            <p className="text-muted-foreground text-sm">Sedang masuk...</p>
           </div>
         )}
       </div>
