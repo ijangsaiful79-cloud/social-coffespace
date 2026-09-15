@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { adminLogin } from './actions'
-
 export default function AdminLoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -16,10 +14,16 @@ export default function AdminLoginPage() {
     setLoading(true)
     setError(null)
 
-    const result = await adminLogin(email, password)
+    const res = await fetch('/api/admin/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
 
-    if (result.error) {
-      setError(result.error)
+    const data = await res.json()
+
+    if (!res.ok) {
+      setError(data.error || 'Login gagal.')
       setLoading(false)
       return
     }
