@@ -2,7 +2,6 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types'
 
@@ -25,53 +24,81 @@ function PeopleHereList() {
   const [people, setPeople] = useState<PersonHere[]>([])
   const [shopName, setShopName] = useState('')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [myProfile, setMyProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Edit identity modal state
+  const [editOpen, setEditOpen] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editMode, setEditMode] = useState<'anonymous' | 'full'>('anonymous')
+  const [editSaving, setEditSaving] = useState(false)
+
   useEffect(() => {
-    if (!shopId) {
-      router.push('/')
-      return
-    }
-    loadPeople()
+    if (!shopId) { router.push('/'); return }
+    init()
   }, [shopId])
 
-  async function loadPeople() {
+  async function init() {
     const supabase = createClient()
     const { data: auth } = await supabase.auth.getUser()
-
-    if (!auth.user) {
-      router.push('/login')
-      return
-    }
+    if (!auth.user) { router.push('/'); return }
 
     setCurrentUserId(auth.user.id)
 
-    // Get shop info
-    const { data: shop } = await supabase
-      .from('coffee_shops')
-      .select('name')
-      .eq('id', shopId)
-      .single()
-
+    const { data: shop } = await supabase.from('coffee_shops').select('name').eq('id', shopId).single()
     if (shop) setShopName(shop.name)
 
-    // Get active sessions + profiles for this coffee shop (excluding blocks)
+    // Load my own profile for the header
+    const { data: myProf } = await supabase.from('profiles').select('*').eq('user_id', auth.user.id).single()
+    if (myProf) {
+      setMyProfile(myProf as unknown as Profile)
+      setEditName(myProf.display_name)
+      setEditMode(myProf.is_anonymous ? 'anonymous' : 'full')
+    }
+
+    await fetchPeople(auth.user.id)
+
+    // Realtime — subscribe ke perubahan sessions di shop ini
+    const channel = supabase
+      .channel(`people-${shopId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'coffee_shop_sessions',
+        filter: `coffee_shop_id=eq.${shopId}`,
+      }, () => {
+        fetchPeople(auth.user.id)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }
+
+  async function fetchPeople(userId: string) {
+    const supabase = createClient()
+
     const { data: sessions } = await supabase
       .from('coffee_shop_sessions')
-      .select('id, user_id, profiles(*)')
+      .select('id, user_id')
       .eq('coffee_shop_id', shopId)
       .eq('status', 'active')
       .gt('expires_at', new Date().toISOString())
-      .neq('user_id', auth.user.id)
+      .neq('user_id', userId)
 
-    if (sessions) {
-      const persons = sessions
-        .filter((s) => s.profiles)
-        .map((s) => ({
-          ...(s.profiles as unknown as Profile),
-          session_id: s.id,
-        }))
-      setPeople(persons)
+    if (!sessions || sessions.length === 0) {
+      setPeople([])
+      setLoading(false)
+      return
+    }
+
+    const userIds = sessions.map((s) => s.user_id)
+    const { data: profiles } = await supabase.from('profiles').select('*').in('user_id', userIds)
+
+    if (profiles) {
+      const sessionMap = Object.fromEntries(sessions.map((s) => [s.user_id, s.id]))
+      setPeople(
+        profiles.map((p) => ({ ...(p as unknown as Profile), session_id: sessionMap[p.user_id] }))
+      )
     }
 
     setLoading(false)
@@ -80,26 +107,19 @@ function PeopleHereList() {
   async function handleSayHi(receiverId: string) {
     const supabase = createClient()
 
-    // Log interaction
     await supabase.from('interactions').insert({
       sender_id: currentUserId,
       receiver_id: receiverId,
       type: 'say_hi',
     })
 
-    // Create or get conversation
     const { data: existing } = await supabase
       .from('conversations')
       .select('id')
-      .or(
-        `and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`
-      )
+      .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`)
       .single()
 
-    if (existing) {
-      router.push(`/chat/${existing.id}`)
-      return
-    }
+    if (existing) { router.push(`/chat/${existing.id}`); return }
 
     const { data: convo } = await supabase
       .from('conversations')
@@ -108,6 +128,25 @@ function PeopleHereList() {
       .single()
 
     if (convo) router.push(`/chat/${convo.id}`)
+  }
+
+  async function handleSaveIdentity(e: React.FormEvent) {
+    e.preventDefault()
+    const name = editName.trim()
+    if (!name || !currentUserId) return
+    setEditSaving(true)
+
+    const supabase = createClient()
+    await supabase.from('profiles').upsert({
+      user_id: currentUserId,
+      display_name: name,
+      is_anonymous: editMode === 'anonymous',
+      chat_enabled: true,
+    })
+
+    setMyProfile((prev) => prev ? { ...prev, display_name: name, is_anonymous: editMode === 'anonymous' } : prev)
+    setEditOpen(false)
+    setEditSaving(false)
   }
 
   if (loading) {
@@ -126,20 +165,27 @@ function PeopleHereList() {
           <h1 className="text-xl font-bold">People Here</h1>
           <p className="text-sm text-muted-foreground">☕ {shopName}</p>
         </div>
-        <Link
-          href="/profile/setup"
-          className="text-sm text-primary font-medium"
+        {/* My identity badge */}
+        <button
+          onClick={() => setEditOpen(true)}
+          className="flex items-center gap-1.5 bg-muted rounded-xl px-3 py-2 text-sm hover:bg-border transition"
         >
-          My Profile
-        </Link>
+          <span className="font-medium truncate max-w-[100px]">
+            {myProfile?.display_name ?? 'Kamu'}
+          </span>
+          <span className="text-muted-foreground text-xs">
+            {myProfile?.is_anonymous ? '🕵️' : '😊'}
+          </span>
+          <span className="text-muted-foreground text-xs">✏️</span>
+        </button>
       </div>
 
       {people.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-5xl mb-4">☕</div>
-          <p className="font-semibold mb-1">You&apos;re the first one here</p>
+          <p className="font-semibold mb-1">Kamu yang pertama di sini</p>
           <p className="text-sm text-muted-foreground">
-            Others will appear here once they join.
+            Orang lain akan muncul otomatis setelah mereka bergabung.
           </p>
         </div>
       ) : (
@@ -152,13 +198,9 @@ function PeopleHereList() {
               {/* Avatar */}
               <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-xl font-bold text-primary shrink-0">
                 {person.avatar_url ? (
-                  <img
-                    src={person.avatar_url}
-                    alt={person.display_name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
+                  <img src={person.avatar_url} alt={person.display_name} className="w-full h-full rounded-full object-cover" />
                 ) : (
-                  person.display_name[0].toUpperCase()
+                  person.display_name?.[0]?.toUpperCase() ?? '?'
                 )}
               </div>
 
@@ -166,13 +208,20 @@ function PeopleHereList() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className="font-semibold truncate">{person.display_name}</p>
-                  <span className="text-muted-foreground text-sm">
-                    {GENDER_EMOJI[person.gender]}
-                  </span>
+                  {!person.is_anonymous && person.gender && (
+                    <span className="text-muted-foreground text-sm">{GENDER_EMOJI[person.gender]}</span>
+                  )}
+                  {person.is_anonymous && (
+                    <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">anonim</span>
+                  )}
                 </div>
-                <p className="text-sm text-muted-foreground truncate">
-                  {person.age} yo{person.bio ? ` · ${person.bio}` : ''}
-                </p>
+                {!person.is_anonymous && (
+                  <p className="text-sm text-muted-foreground truncate">
+                    {person.age ? `${person.age} yo` : ''}
+                    {person.age && person.bio ? ' · ' : ''}
+                    {person.bio ?? ''}
+                  </p>
+                )}
               </div>
 
               {/* Say Hi */}
@@ -181,7 +230,7 @@ function PeopleHereList() {
                   onClick={() => handleSayHi(person.user_id)}
                   className="shrink-0 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition"
                 >
-                  Say Hi
+                  Say Hi 👋
                 </button>
               )}
             </div>
@@ -189,10 +238,80 @@ function PeopleHereList() {
         </div>
       )}
 
-      {/* Session timer note */}
       <p className="text-center text-xs text-muted-foreground mt-8">
-        Your session expires in 30 minutes. Scan QR again to extend.
+        Sesi kamu berakhir dalam 30 menit. Scan QR lagi untuk perpanjang.
       </p>
+
+      {/* Edit Identity Modal */}
+      {editOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6">
+          <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h2 className="font-bold text-lg mb-1">Ubah Tampilan</h2>
+            <p className="text-sm text-muted-foreground mb-4">Nama dan mode tampil kamu</p>
+
+            <form onSubmit={handleSaveIdentity} className="space-y-4">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Nama atau nickname"
+                maxLength={30}
+                required
+                autoFocus
+                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditMode('anonymous')}
+                  className={`py-3 rounded-xl border text-sm font-semibold transition ${
+                    editMode === 'anonymous'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border hover:bg-muted'
+                  }`}
+                >
+                  🕵️ Anonim
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditMode('full')}
+                  className={`py-3 rounded-xl border text-sm font-semibold transition ${
+                    editMode === 'full'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border hover:bg-muted'
+                  }`}
+                >
+                  😊 Tampil Lengkap
+                </button>
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center">
+                {editMode === 'anonymous'
+                  ? 'Hanya nama yang terlihat oleh orang lain'
+                  : 'Nama, usia, bio, dan sosmed kamu terlihat'}
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(false)}
+                  className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSaving || !editName.trim()}
+                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-40"
+                >
+                  {editSaving ? 'Menyimpan...' : 'Simpan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

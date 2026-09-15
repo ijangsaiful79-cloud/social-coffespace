@@ -17,20 +17,20 @@ interface Shop {
 }
 
 type Step = 'welcome' | 'gps' | 'verifying' | 'failed' | 'identity' | 'joining'
+type Mode = 'anonymous' | 'full'
 
 export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
   const router = useRouter()
   const [step, setStep] = useState<Step>('welcome')
   const [gpsError, setGpsError] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState('')
+  const [mode, setMode] = useState<Mode>('anonymous')
   const [joinError, setJoinError] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) {
-        setStep('gps')
-      }
+      if (data.user) setStep('gps')
     })
   }, [])
 
@@ -46,20 +46,12 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
 
     const onSuccess = (position: GeolocationPosition) => {
       const { latitude, longitude } = position.coords
-      const verified = isWithinRadius(
-        latitude,
-        longitude,
-        shop.latitude,
-        shop.longitude,
-        shop.radius_meter
-      )
-
+      const verified = isWithinRadius(latitude, longitude, shop.latitude, shop.longitude, shop.radius_meter)
       if (!verified) {
         setGpsError(`Kamu terlalu jauh dari ${shop.name}. Pastikan kamu berada di dalam coffee shop.`)
         setStep('failed')
         return
       }
-
       setStep('identity')
     }
 
@@ -67,40 +59,33 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
       if (error.code === 1) {
         setGpsError('Akses lokasi ditolak. Buka Pengaturan → Safari → Lokasi → Izinkan, lalu coba lagi.')
       } else if (error.code === 2) {
-        setGpsError('Sinyal GPS lemah. Pastikan kamu di luar ruangan sebentar atau aktifkan WiFi untuk bantu lokasi.')
+        setGpsError('Sinyal GPS lemah. Aktifkan WiFi untuk bantu lokasi lalu coba lagi.')
       } else {
         setGpsError('Waktu habis saat mengambil lokasi. Pastikan GPS aktif lalu coba lagi.')
       }
       setStep('failed')
     }
 
-    // Pertama coba dengan akurasi tinggi
     navigator.geolocation.getCurrentPosition(onSuccess, (firstError) => {
-      if (firstError.code === 1) {
-        // Permission denied — langsung kasih error, jangan retry
-        onError(firstError)
-        return
-      }
-      // Timeout atau unavailable — fallback ke akurasi rendah + cache
+      if (firstError.code === 1) { onError(firstError); return }
       navigator.geolocation.getCurrentPosition(onSuccess, onError, {
         enableHighAccuracy: false,
         timeout: 20000,
         maximumAge: 60000,
       })
-    }, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 30000,
-    })
+    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 })
   }
 
-  async function handleJoin(name: string) {
+  async function handleJoin(e: React.FormEvent) {
+    e.preventDefault()
+    const name = displayName.trim()
+    if (!name) return
+
     setStep('joining')
     setJoinError(null)
 
     const supabase = createClient()
 
-    // Sign in anonymously if not already logged in
     let userId: string
     const { data: existing } = await supabase.auth.getUser()
     if (existing.user) {
@@ -115,14 +100,13 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
       userId = anon.user.id
     }
 
-    // Upsert profile
     await supabase.from('profiles').upsert({
       user_id: userId,
       display_name: name,
+      is_anonymous: mode === 'anonymous',
       chat_enabled: true,
     })
 
-    // Create or refresh coffee shop session
     const now = new Date()
     const expiresAt = new Date(now.getTime() + 30 * 60 * 1000)
 
@@ -138,11 +122,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
     if (existingSession) {
       await supabase
         .from('coffee_shop_sessions')
-        .update({
-          last_active_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
-          gps_verified: true,
-        })
+        .update({ last_active_at: now.toISOString(), expires_at: expiresAt.toISOString(), gps_verified: true })
         .eq('id', existingSession.id)
     } else {
       await supabase.from('coffee_shop_sessions').insert({
@@ -159,22 +139,9 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
     router.push(`/people?shop=${shop.id}`)
   }
 
-  function handleAnonymous() {
-    const suffix = Math.floor(1000 + Math.random() * 9000)
-    handleJoin(`Anonim #${suffix}`)
-  }
-
-  function handleNameSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const name = displayName.trim()
-    if (!name) return
-    handleJoin(name)
-  }
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        {/* Shop info */}
         <div className="text-center mb-8">
           <div className="text-5xl mb-4">☕</div>
           <h1 className="text-2xl font-bold mb-1">{shop.name}</h1>
@@ -231,47 +198,65 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
         )}
 
         {step === 'identity' && (
-          <div className="space-y-4">
-            <div className="text-center">
-              <p className="font-semibold text-base mb-1">Kamu mau tampil sebagai?</p>
-              <p className="text-sm text-muted-foreground">Pilih anonim atau masukkan namamu</p>
+          <form onSubmit={handleJoin} className="space-y-4">
+            <div className="text-center mb-2">
+              <p className="font-semibold text-base">Kamu mau tampil sebagai?</p>
+              <p className="text-sm text-muted-foreground">Masukkan nama atau nickname kamu</p>
             </div>
+
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Nama atau nickname"
+              maxLength={30}
+              required
+              autoFocus
+              className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+            />
+
+            {/* Mode toggle */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setMode('anonymous')}
+                className={`py-3 rounded-xl border text-sm font-semibold transition ${
+                  mode === 'anonymous'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'border-border hover:bg-muted'
+                }`}
+              >
+                🕵️ Anonim
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('full')}
+                className={`py-3 rounded-xl border text-sm font-semibold transition ${
+                  mode === 'full'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'border-border hover:bg-muted'
+                }`}
+              >
+                😊 Tampil Lengkap
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              {mode === 'anonymous'
+                ? 'Hanya nama yang terlihat oleh orang lain'
+                : 'Nama, usia, bio, dan sosmed kamu terlihat'}
+            </p>
+
+            {joinError && <p className="text-sm text-red-500 text-center">{joinError}</p>}
 
             <button
-              onClick={handleAnonymous}
-              className="w-full py-3 rounded-xl border border-border font-semibold hover:bg-muted transition text-sm"
+              type="submit"
+              disabled={!displayName.trim()}
+              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition disabled:opacity-40"
             >
-              Anonim
+              Masuk ke People Here
             </button>
-
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground">atau</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-
-            <form onSubmit={handleNameSubmit} className="space-y-3">
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Masukkan nama atau nickname"
-                maxLength={30}
-                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
-              />
-              <button
-                type="submit"
-                disabled={!displayName.trim()}
-                className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition disabled:opacity-40"
-              >
-                Masuk dengan Nama Ini
-              </button>
-            </form>
-
-            {joinError && (
-              <p className="text-sm text-red-500 text-center">{joinError}</p>
-            )}
-          </div>
+          </form>
         )}
 
         {step === 'joining' && (
