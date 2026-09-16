@@ -21,14 +21,15 @@ export interface Profile {
   id: string
   user_id: string
   display_name: string
-  age: number
-  gender: Gender
+  age: number | null
+  gender: Gender | null
   bio: string | null
   avatar_url: string | null
   instagram: string | null
   tiktok: string | null
   whatsapp: string | null
   chat_enabled: boolean
+  is_anonymous: boolean
   created_at: string
   updated_at: string
 }

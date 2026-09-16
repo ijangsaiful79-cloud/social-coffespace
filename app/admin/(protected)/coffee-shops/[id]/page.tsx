@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
 import QRGenerator from './QRGenerator'
+import { ToggleActiveButton, DeleteShopButton } from './ShopActions'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -11,12 +12,7 @@ export default async function CoffeeShopDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = createAdminClient()
 
-  const { data: shop } = await supabase
-    .from('coffee_shops')
-    .select('*')
-    .eq('id', id)
-    .single()
-
+  const { data: shop } = await supabase.from('coffee_shops').select('*').eq('id', id).single()
   if (!shop) return notFound()
 
   const shopUrl = `${process.env.NEXT_PUBLIC_APP_URL}/c/${shop.access_token}`
@@ -69,20 +65,30 @@ export default async function CoffeeShopDetailPage({ params }: Props) {
           </div>
 
           <div className="mt-4 pt-4 border-t border-border">
-            <p className="text-xs text-muted-foreground mb-1">Active Sessions Now</p>
+            <p className="text-xs text-muted-foreground mb-1">Sesi Aktif Sekarang</p>
             <p className="text-2xl font-bold text-primary">{activeSessions ?? 0}</p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 mt-4 pt-4 border-t border-border">
+            <Link
+              href={`/admin/coffee-shops/${id}/edit`}
+              className="px-4 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-muted transition"
+            >
+              Edit
+            </Link>
+            <ToggleActiveButton id={id} isActive={shop.is_active} />
+            <DeleteShopButton id={id} />
           </div>
         </div>
 
-        {/* QR & NFC URL */}
+        {/* QR */}
         <div className="bg-card border border-border rounded-2xl p-6">
           <h2 className="font-semibold mb-4">QR Code & NFC URL</h2>
-
           <div className="bg-muted rounded-xl px-4 py-3 mb-4">
-            <p className="text-xs text-muted-foreground mb-1">Permanent URL (untuk QR & NFC)</p>
+            <p className="text-xs text-muted-foreground mb-1">Permanent URL</p>
             <p className="text-sm font-mono break-all">{shopUrl}</p>
           </div>
-
           <QRGenerator url={shopUrl} shopName={shop.name} />
         </div>
       </div>
