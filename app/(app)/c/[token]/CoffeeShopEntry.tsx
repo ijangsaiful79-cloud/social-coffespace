@@ -16,23 +16,71 @@ interface Shop {
   is_active: boolean
 }
 
-type Step = 'welcome' | 'gps' | 'verifying' | 'failed' | 'identity' | 'joining'
+type Step = 'checking' | 'welcome' | 'gps' | 'verifying' | 'failed' | 'identity' | 'joining'
 type Mode = 'anonymous' | 'full'
 
 export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
   const router = useRouter()
-  const [step, setStep] = useState<Step>('welcome')
+  const [step, setStep] = useState<Step>('checking')
   const [gpsError, setGpsError] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState('')
   const [mode, setMode] = useState<Mode>('anonymous')
   const [joinError, setJoinError] = useState<string | null>(null)
+  // Holds existing userId when returning user skips identity step
+  const [existingUserId, setExistingUserId] = useState<string | null>(null)
 
   useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setStep('gps')
-    })
+    checkExistingSession()
   }, [])
+
+  async function checkExistingSession() {
+    const supabase = createClient()
+    const { data: auth } = await supabase.auth.getUser()
+
+    if (!auth.user) {
+      setStep('welcome')
+      return
+    }
+
+    const uid = auth.user.id
+    setExistingUserId(uid)
+
+    // Check if they have a profile (meaning they've set identity before)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name, is_anonymous')
+      .eq('user_id', uid)
+      .single()
+
+    if (!profile) {
+      // Has auth but no profile — ask for identity
+      setStep('identity')
+      return
+    }
+
+    // Pre-fill identity fields in case they need to re-enter
+    setDisplayName(profile.display_name)
+    setMode(profile.is_anonymous ? 'anonymous' : 'full')
+
+    // Check if coffee shop session is still active
+    const { data: session } = await supabase
+      .from('coffee_shop_sessions')
+      .select('id')
+      .eq('user_id', uid)
+      .eq('coffee_shop_id', shop.id)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .single()
+
+    if (session) {
+      // Session masih aktif — langsung ke People Here
+      router.replace(`/people?shop=${shop.id}`)
+      return
+    }
+
+    // Profile ada tapi session expired — skip ke GPS saja
+    setStep('gps')
+  }
 
   function handleGPSVerify() {
     setStep('verifying')
@@ -52,7 +100,12 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
         setStep('failed')
         return
       }
-      setStep('identity')
+      // Kalau sudah punya profile → langsung join, skip identity
+      if (existingUserId && displayName) {
+        joinSession(existingUserId)
+      } else {
+        setStep('identity')
+      }
     }
 
     const onError = (error: GeolocationPositionError) => {
@@ -76,47 +129,17 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
     }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 })
   }
 
-  async function handleJoin(e: React.FormEvent) {
-    e.preventDefault()
-    const name = displayName.trim()
-    if (!name) return
-
-    setStep('joining')
-    setJoinError(null)
-
+  async function joinSession(uid: string) {
     const supabase = createClient()
-
-    let userId: string
-    const { data: existing } = await supabase.auth.getUser()
-    if (existing.user) {
-      userId = existing.user.id
-    } else {
-      const { data: anon, error: anonError } = await supabase.auth.signInAnonymously()
-      if (anonError || !anon.user) {
-        setJoinError('Gagal masuk. Coba lagi.')
-        setStep('identity')
-        return
-      }
-      userId = anon.user.id
-    }
-
-    await supabase.from('profiles').upsert({
-      user_id: userId,
-      display_name: name,
-      is_anonymous: mode === 'anonymous',
-      chat_enabled: true,
-    })
-
     const now = new Date()
     const expiresAt = new Date(now.getTime() + 30 * 60 * 1000)
 
     const { data: existingSession } = await supabase
       .from('coffee_shop_sessions')
       .select('id')
-      .eq('user_id', userId)
+      .eq('user_id', uid)
       .eq('coffee_shop_id', shop.id)
       .eq('status', 'active')
-      .gt('expires_at', now.toISOString())
       .single()
 
     if (existingSession) {
@@ -126,7 +149,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
         .eq('id', existingSession.id)
     } else {
       await supabase.from('coffee_shop_sessions').insert({
-        user_id: userId,
+        user_id: uid,
         coffee_shop_id: shop.id,
         joined_at: now.toISOString(),
         last_active_at: now.toISOString(),
@@ -137,6 +160,47 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
     }
 
     router.push(`/people?shop=${shop.id}`)
+  }
+
+  async function handleJoin(e: React.FormEvent) {
+    e.preventDefault()
+    const name = displayName.trim()
+    if (!name) return
+
+    setStep('joining')
+    setJoinError(null)
+
+    const supabase = createClient()
+    let uid = existingUserId
+
+    if (!uid) {
+      const { data: anon, error: anonError } = await supabase.auth.signInAnonymously()
+      if (anonError || !anon.user) {
+        setJoinError('Gagal masuk. Coba lagi.')
+        setStep('identity')
+        return
+      }
+      uid = anon.user.id
+      setExistingUserId(uid)
+    }
+
+    await supabase.from('profiles').upsert({
+      user_id: uid,
+      display_name: name,
+      is_anonymous: mode === 'anonymous',
+      chat_enabled: true,
+    })
+
+    await joinSession(uid)
+  }
+
+  // Checking state — blank/spinner sementara cek session
+  if (step === 'checking') {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center px-4">
+        <div className="text-4xl animate-pulse">☕</div>
+      </main>
+    )
   }
 
   return (
@@ -164,6 +228,11 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
 
         {step === 'gps' && (
           <div className="space-y-4">
+            {existingUserId && displayName && (
+              <div className="bg-muted rounded-xl px-4 py-3 text-sm text-center text-muted-foreground">
+                Selamat datang lagi, <strong>{displayName}</strong> 👋
+              </div>
+            )}
             <div className="bg-muted rounded-xl p-4 text-center text-sm text-muted-foreground">
               Kami perlu verifikasi bahwa kamu berada di <strong>{shop.name}</strong>.
             </div>
@@ -215,15 +284,12 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
               className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
 
-            {/* Mode toggle */}
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setMode('anonymous')}
                 className={`py-3 rounded-xl border text-sm font-semibold transition ${
-                  mode === 'anonymous'
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border hover:bg-muted'
+                  mode === 'anonymous' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
                 }`}
               >
                 🕵️ Anonim
@@ -232,9 +298,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
                 type="button"
                 onClick={() => setMode('full')}
                 className={`py-3 rounded-xl border text-sm font-semibold transition ${
-                  mode === 'full'
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'border-border hover:bg-muted'
+                  mode === 'full' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
                 }`}
               >
                 😊 Tampil Lengkap
@@ -242,9 +306,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              {mode === 'anonymous'
-                ? 'Hanya nama yang terlihat oleh orang lain'
-                : 'Nama, usia, bio, dan sosmed kamu terlihat'}
+              {mode === 'anonymous' ? 'Hanya nama yang terlihat oleh orang lain' : 'Nama, usia, bio, dan sosmed kamu terlihat'}
             </p>
 
             {joinError && <p className="text-sm text-red-500 text-center">{joinError}</p>}
