@@ -17,6 +17,14 @@ const GENDER_EMOJI: Record<string, string> = {
   prefer_not_to_say: '',
 }
 
+const REPORT_REASONS = [
+  'Spam',
+  'Konten tidak pantas',
+  'Pelecehan atau intimidasi',
+  'Profil palsu',
+  'Lainnya',
+]
+
 function PeopleHereList() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -27,13 +35,25 @@ function PeopleHereList() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Edit identity
   const [editOpen, setEditOpen] = useState(false)
   const [editName, setEditName] = useState('')
   const [editMode, setEditMode] = useState<'anonymous' | 'full'>('anonymous')
   const [editSaving, setEditSaving] = useState(false)
 
+  // Report & Block
+  const [menuTarget, setMenuTarget] = useState<PersonHere | null>(null)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+  const [reportDesc, setReportDesc] = useState('')
+  const [blockConfirm, setBlockConfirm] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+
   const userIdRef = useRef<string | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (!shopId) { router.push('/'); return }
@@ -60,7 +80,6 @@ function PeopleHereList() {
 
       await fetchPeople(uid, supabase)
 
-      // Setup realtime channel
       const channel = supabase
         .channel(`people-${shopId}`)
         .on(
@@ -71,13 +90,17 @@ function PeopleHereList() {
           }
         )
         .subscribe((status) => {
-          // Fallback polling jika realtime gagal connect
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             if (userIdRef.current) fetchPeople(userIdRef.current, supabase)
           }
         })
 
       channelRef.current = channel
+
+      // Polling fallback — handles missed realtime events & expired sessions
+      pollRef.current = setInterval(() => {
+        if (userIdRef.current) fetchPeople(userIdRef.current, supabase)
+      }, 30_000)
     }
 
     boot()
@@ -87,10 +110,22 @@ function PeopleHereList() {
         supabase.removeChannel(channelRef.current)
         channelRef.current = null
       }
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
     }
   }, [shopId])
 
   async function fetchPeople(uid: string, supabase: ReturnType<typeof createClient>) {
+    // Fetch block list so we can exclude them
+    const { data: myBlocks } = await supabase
+      .from('blocks')
+      .select('blocked_user_id')
+      .eq('user_id', uid)
+
+    const blockedIds = new Set((myBlocks ?? []).map((b: { blocked_user_id: string }) => b.blocked_user_id))
+
     const { data: sessions } = await supabase
       .from('coffee_shop_sessions')
       .select('id, user_id')
@@ -99,21 +134,28 @@ function PeopleHereList() {
       .gt('expires_at', new Date().toISOString())
       .neq('user_id', uid)
 
-    if (!sessions || sessions.length === 0) {
+    const filtered = (sessions ?? []).filter((s) => !blockedIds.has(s.user_id))
+
+    if (filtered.length === 0) {
       setPeople([])
       setLoading(false)
       return
     }
 
-    const userIds = sessions.map((s) => s.user_id)
+    const userIds = filtered.map((s) => s.user_id)
     const { data: profiles } = await supabase.from('profiles').select('*').in('user_id', userIds)
 
     if (profiles) {
-      const sessionMap = Object.fromEntries(sessions.map((s) => [s.user_id, s.id]))
+      const sessionMap = Object.fromEntries(filtered.map((s) => [s.user_id, s.id]))
       setPeople(profiles.map((p) => ({ ...(p as unknown as Profile), session_id: sessionMap[p.user_id] })))
     }
 
     setLoading(false)
+  }
+
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
   }
 
   async function handleSayHi(receiverId: string) {
@@ -151,11 +193,49 @@ function PeopleHereList() {
       display_name: name,
       is_anonymous: editMode === 'anonymous',
       chat_enabled: true,
-    })
+    }, { onConflict: 'user_id' })
 
     setMyProfile((prev) => prev ? { ...prev, display_name: name, is_anonymous: editMode === 'anonymous' } : prev)
     setEditOpen(false)
     setEditSaving(false)
+  }
+
+  async function handleBlock() {
+    if (!currentUserId || !menuTarget) return
+    setActionLoading(true)
+    const supabase = createClient()
+
+    await supabase.from('blocks').insert({
+      user_id: currentUserId,
+      blocked_user_id: menuTarget.user_id,
+    })
+
+    setPeople((prev) => prev.filter((p) => p.user_id !== menuTarget.user_id))
+    setBlockConfirm(false)
+    setMenuTarget(null)
+    setActionLoading(false)
+    showToast('Pengguna telah diblokir')
+  }
+
+  async function handleReport(e: React.FormEvent) {
+    e.preventDefault()
+    if (!currentUserId || !menuTarget || !reportReason) return
+    setActionLoading(true)
+    const supabase = createClient()
+
+    await supabase.from('reports').insert({
+      reporter_id: currentUserId,
+      reported_user_id: menuTarget.user_id,
+      reason: reportReason,
+      description: reportDesc.trim() || null,
+    })
+
+    setReportOpen(false)
+    setMenuTarget(null)
+    setReportReason('')
+    setReportDesc('')
+    setActionLoading(false)
+    showToast('Laporan berhasil dikirim')
   }
 
   if (loading) {
@@ -192,7 +272,7 @@ function PeopleHereList() {
       ) : (
         <div className="space-y-3">
           {people.map((person) => (
-            <div key={person.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
+            <div key={person.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-xl font-bold text-primary shrink-0">
                 {person.avatar_url
                   ? <img src={person.avatar_url} alt={person.display_name} className="w-full h-full rounded-full object-cover" />
@@ -217,14 +297,23 @@ function PeopleHereList() {
                 )}
               </div>
 
-              {person.chat_enabled && (
+              <div className="shrink-0 flex items-center gap-2">
+                {person.chat_enabled && (
+                  <button
+                    onClick={() => handleSayHi(person.user_id)}
+                    className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition"
+                  >
+                    Say Hi 👋
+                  </button>
+                )}
                 <button
-                  onClick={() => handleSayHi(person.user_id)}
-                  className="shrink-0 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition"
+                  onClick={() => setMenuTarget(person)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition"
+                  aria-label="Opsi lainnya"
                 >
-                  Say Hi 👋
+                  •••
                 </button>
-              )}
+              </div>
             </div>
           ))}
         </div>
@@ -280,6 +369,128 @@ function PeopleHereList() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Action Sheet — Report / Block */}
+      {menuTarget && !reportOpen && !blockConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setMenuTarget(null)}>
+          <div className="bg-background rounded-2xl w-full max-w-sm shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-border">
+              <p className="font-semibold">{menuTarget.display_name}</p>
+              <p className="text-xs text-muted-foreground">{menuTarget.is_anonymous ? 'Mode anonim' : 'Profil lengkap'}</p>
+            </div>
+            <button
+              onClick={() => setReportOpen(true)}
+              className="w-full px-5 py-4 text-left text-sm font-medium hover:bg-muted transition flex items-center gap-3"
+            >
+              <span className="text-lg">🚩</span>
+              <span>Laporkan pengguna ini</span>
+            </button>
+            <button
+              onClick={() => setBlockConfirm(true)}
+              className="w-full px-5 py-4 text-left text-sm font-medium text-red-500 hover:bg-red-50 transition flex items-center gap-3 border-t border-border"
+            >
+              <span className="text-lg">🚫</span>
+              <span>Blokir pengguna ini</span>
+            </button>
+            <button
+              onClick={() => setMenuTarget(null)}
+              className="w-full px-5 py-4 text-left text-sm text-muted-foreground hover:bg-muted transition border-t border-border"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Report Modal */}
+      {reportOpen && menuTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => { setReportOpen(false); setMenuTarget(null) }}>
+          <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-bold text-lg mb-1">Laporkan Pengguna</h2>
+            <p className="text-sm text-muted-foreground mb-4">Laporan kamu bersifat anonim dan akan ditinjau admin.</p>
+
+            <form onSubmit={handleReport} className="space-y-4">
+              <div className="space-y-2">
+                {REPORT_REASONS.map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => setReportReason(reason)}
+                    className={`w-full px-4 py-3 rounded-xl border text-sm text-left transition ${
+                      reportReason === reason
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border hover:bg-muted'
+                    }`}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                value={reportDesc}
+                onChange={(e) => setReportDesc(e.target.value)}
+                placeholder="Keterangan tambahan (opsional)"
+                rows={2}
+                maxLength={300}
+                className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
+              />
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setReportOpen(false); setMenuTarget(null) }}
+                  className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!reportReason || actionLoading}
+                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-40"
+                >
+                  {actionLoading ? 'Mengirim...' : 'Kirim Laporan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Block Confirm Modal */}
+      {blockConfirm && menuTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => { setBlockConfirm(false); setMenuTarget(null) }}>
+          <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-bold text-lg mb-1">Blokir {menuTarget.display_name}?</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Mereka tidak akan muncul di daftar kamu. Kamu tidak akan bisa mengirim atau menerima pesan dari mereka.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setBlockConfirm(false); setMenuTarget(null) }}
+                className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleBlock}
+                disabled={actionLoading}
+                className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-40"
+              >
+                {actionLoading ? 'Memblokir...' : 'Blokir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-sm font-medium px-5 py-3 rounded-2xl shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2">
+          {toast}
         </div>
       )}
     </main>

@@ -25,8 +25,11 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
   const [gpsError, setGpsError] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState('')
   const [mode, setMode] = useState<Mode>('anonymous')
+  const [age, setAge] = useState('')
+  const [bio, setBio] = useState('')
+  const [instagram, setInstagram] = useState('')
+  const [whatsapp, setWhatsapp] = useState('')
   const [joinError, setJoinError] = useState<string | null>(null)
-  // Holds existing userId when returning user skips identity step
   const [existingUserId, setExistingUserId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -189,7 +192,13 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
       display_name: name,
       is_anonymous: mode === 'anonymous',
       chat_enabled: true,
-    })
+      ...(mode === 'full' && {
+        age: age ? parseInt(age) : null,
+        bio: bio.trim() || null,
+        instagram: instagram.trim() || null,
+        whatsapp: whatsapp.trim() || null,
+      }),
+    }, { onConflict: 'user_id' })
 
     await joinSession(uid)
   }
@@ -308,6 +317,43 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
             <p className="text-xs text-muted-foreground text-center">
               {mode === 'anonymous' ? 'Hanya nama yang terlihat oleh orang lain' : 'Nama, usia, bio, dan sosmed kamu terlihat'}
             </p>
+
+            {mode === 'full' && (
+              <div className="space-y-3 border border-border rounded-xl p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Data Profil Lengkap</p>
+                <input
+                  type="number"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="Usia"
+                  min={17}
+                  max={99}
+                  className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+                />
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Bio singkat (opsional)"
+                  maxLength={150}
+                  rows={2}
+                  className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
+                />
+                <input
+                  type="text"
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  placeholder="Instagram username (opsional)"
+                  className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+                />
+                <input
+                  type="text"
+                  value={whatsapp}
+                  onChange={(e) => setWhatsapp(e.target.value)}
+                  placeholder="Nomor WhatsApp (opsional)"
+                  className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+                />
+              </div>
+            )}
 
             {joinError && <p className="text-sm text-red-500 text-center">{joinError}</p>}
 
