@@ -3,12 +3,115 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+const s = {
+  page: {
+    display: 'flex',
+    minHeight: '100vh',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0ebe4',
+    padding: '0 16px',
+    fontFamily: 'Arial, Helvetica, sans-serif',
+  } as React.CSSProperties,
+  wrapper: {
+    width: '100%',
+    maxWidth: '380px',
+  } as React.CSSProperties,
+  card: {
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5ddd5',
+    borderRadius: '16px',
+    padding: '40px 32px',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+  } as React.CSSProperties,
+  header: {
+    textAlign: 'center',
+    marginBottom: '32px',
+  } as React.CSSProperties,
+  icon: {
+    fontSize: '40px',
+    marginBottom: '12px',
+    display: 'block',
+  } as React.CSSProperties,
+  title: {
+    fontSize: '20px',
+    fontWeight: '700',
+    color: '#1a1a1a',
+    margin: '0 0 4px',
+  } as React.CSSProperties,
+  subtitle: {
+    fontSize: '13px',
+    color: '#6b6560',
+    margin: 0,
+  } as React.CSSProperties,
+  label: {
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#1a1a1a',
+    marginBottom: '6px',
+  } as React.CSSProperties,
+  input: {
+    width: '100%',
+    padding: '12px 16px',
+    borderRadius: '12px',
+    border: '1px solid #e5ddd5',
+    backgroundColor: '#faf8f5',
+    fontSize: '14px',
+    color: '#1a1a1a',
+    outline: 'none',
+    boxSizing: 'border-box',
+    transition: 'box-shadow 0.15s',
+  } as React.CSSProperties,
+  field: {
+    marginBottom: '16px',
+  } as React.CSSProperties,
+  errorBox: {
+    backgroundColor: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: '12px',
+    padding: '12px 16px',
+    fontSize: '13px',
+    color: '#dc2626',
+    textAlign: 'center',
+    marginBottom: '16px',
+  } as React.CSSProperties,
+  btn: (loading: boolean) => ({
+    width: '100%',
+    padding: '13px',
+    borderRadius: '12px',
+    border: 'none',
+    backgroundColor: loading ? '#d9a07e' : '#c8763a',
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: '14px',
+    cursor: loading ? 'not-allowed' : 'pointer',
+    marginTop: '8px',
+    transition: 'opacity 0.15s',
+  } as React.CSSProperties),
+  footer: {
+    textAlign: 'center',
+    fontSize: '12px',
+    color: '#6b6560',
+    marginTop: '16px',
+  } as React.CSSProperties,
+}
+
 export default function AdminLoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  function onFocus(e: React.FocusEvent<HTMLInputElement>) {
+    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(200,118,58,0.25)'
+    e.currentTarget.style.borderColor = '#c8763a'
+  }
+  function onBlur(e: React.FocusEvent<HTMLInputElement>) {
+    e.currentTarget.style.boxShadow = 'none'
+    e.currentTarget.style.borderColor = '#e5ddd5'
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -34,115 +137,53 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main
-      className="flex min-h-screen items-center justify-center px-4"
-      style={{ backgroundColor: '#f0ebe4' }}
-    >
-      <div className="w-full max-w-sm">
-        <div
-          className="rounded-2xl px-8 py-10 shadow-sm"
-          style={{
-            backgroundColor: '#ffffff',
-            border: '1px solid #e5ddd5',
-          }}
-        >
-          <div className="text-center mb-8">
-            <div className="text-4xl mb-3">☕</div>
-            <h1 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
-              Super Admin
-            </h1>
-            <p className="text-sm mt-1" style={{ color: '#6b6560' }}>
-              Coffee Dating Management
-            </p>
+    <main style={s.page}>
+      <div style={s.wrapper}>
+        <div style={s.card}>
+          <div style={s.header}>
+            <span style={s.icon}>☕</span>
+            <h1 style={s.title}>Super Admin</h1>
+            <p style={s.subtitle}>Coffee Dating Management</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label
-                className="block text-sm font-medium mb-1.5"
-                style={{ color: '#1a1a1a' }}
-              >
-                Email
-              </label>
+          <form onSubmit={handleSubmit}>
+            <div style={s.field}>
+              <label style={s.label}>Email</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@email.com"
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition"
-                style={{
-                  backgroundColor: '#faf8f5',
-                  border: '1px solid #e5ddd5',
-                  color: '#1a1a1a',
-                }}
-                onFocus={(e) =>
-                  (e.currentTarget.style.boxShadow =
-                    '0 0 0 3px rgba(200,118,58,0.2)')
-                }
-                onBlur={(e) => (e.currentTarget.style.boxShadow = 'none')}
+                style={s.input}
+                onFocus={onFocus}
+                onBlur={onBlur}
               />
             </div>
 
-            <div>
-              <label
-                className="block text-sm font-medium mb-1.5"
-                style={{ color: '#1a1a1a' }}
-              >
-                Password
-              </label>
+            <div style={s.field}>
+              <label style={s.label}>Password</label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition"
-                style={{
-                  backgroundColor: '#faf8f5',
-                  border: '1px solid #e5ddd5',
-                  color: '#1a1a1a',
-                }}
-                onFocus={(e) =>
-                  (e.currentTarget.style.boxShadow =
-                    '0 0 0 3px rgba(200,118,58,0.2)')
-                }
-                onBlur={(e) => (e.currentTarget.style.boxShadow = 'none')}
+                style={s.input}
+                onFocus={onFocus}
+                onBlur={onBlur}
               />
             </div>
 
-            {error && (
-              <div
-                className="rounded-xl px-4 py-3 text-sm text-center"
-                style={{
-                  backgroundColor: '#fef2f2',
-                  border: '1px solid #fecaca',
-                  color: '#dc2626',
-                }}
-              >
-                {error}
-              </div>
-            )}
+            {error && <div style={s.errorBox}>{error}</div>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl font-semibold text-sm transition mt-2"
-              style={{
-                backgroundColor: loading ? '#d9a07e' : '#c8763a',
-                color: '#ffffff',
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
-            >
+            <button type="submit" disabled={loading} style={s.btn(loading)}>
               {loading ? 'Masuk...' : 'Masuk ke Dashboard'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-xs mt-4" style={{ color: '#6b6560' }}>
-          Hanya untuk tim internal Coffee Dating
-        </p>
+        <p style={s.footer}>Hanya untuk tim internal Coffee Dating</p>
       </div>
     </main>
   )
