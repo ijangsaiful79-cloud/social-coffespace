@@ -6,33 +6,17 @@ import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Profile } from '@/types'
 
-interface PersonHere extends Profile {
-  session_id: string
-}
+interface PersonHere extends Profile { session_id: string }
 
 const GENDER_EMOJI: Record<string, string> = {
-  male: '♂',
-  female: '♀',
-  other: '⚧',
-  prefer_not_to_say: '',
+  male: '♂', female: '♀', other: '⚧', prefer_not_to_say: '',
 }
 
-const REPORT_REASONS = [
-  'Spam',
-  'Konten tidak pantas',
-  'Pelecehan atau intimidasi',
-  'Profil palsu',
-  'Lainnya',
-]
+const REPORT_REASONS = ['Spam', 'Konten tidak pantas', 'Pelecehan atau intimidasi', 'Profil palsu', 'Lainnya']
 
 const AVATAR_GRADIENTS = [
-  ['#c8763a', '#e8a265'],
-  ['#7c6aad', '#a892d4'],
-  ['#2d9e6b', '#5cc99a'],
-  ['#c85c5c', '#e88585'],
-  ['#4a7fc1', '#7aaee8'],
-  ['#c88a3a', '#e8b865'],
-  ['#5a8a6a', '#83b890'],
+  ['#c8763a', '#e8a265'], ['#7c6aad', '#a892d4'], ['#2d9e6b', '#5cc99a'],
+  ['#c85c5c', '#e88585'], ['#4a7fc1', '#7aaee8'], ['#c88a3a', '#e8b865'], ['#5a8a6a', '#83b890'],
 ]
 
 function getGradient(str: string) {
@@ -43,27 +27,12 @@ function getGradient(str: string) {
 
 function Avatar({ name, avatarUrl, isAnonymous, size = 48 }: { name: string; avatarUrl?: string | null; isAnonymous: boolean; size?: number }) {
   const gradient = getGradient(name)
-  if (isAnonymous) {
-    return (
-      <div
-        style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4 }}
-      >
-        🕵️
-      </div>
-    )
-  }
-  if (avatarUrl) {
-    return <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-  }
+  if (isAnonymous) return (
+    <div style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4 }}>🕵️</div>
+  )
+  if (avatarUrl) return <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
   return (
-    <div
-      style={{
-        width: size, height: size, flexShrink: 0, borderRadius: '50%',
-        background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: '#fff', fontWeight: 700, fontSize: size * 0.38, letterSpacing: '-0.5px',
-      }}
-    >
+    <div style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: size * 0.38 }}>
       {name?.[0]?.toUpperCase() ?? '?'}
     </div>
   )
@@ -80,12 +49,19 @@ function PeopleHereList() {
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [sayingHiTo, setSayingHiTo] = useState<Set<string>>(new Set())
+  const [exitLoading, setExitLoading] = useState(false)
 
+  // Edit state
   const [editOpen, setEditOpen] = useState(false)
   const [editName, setEditName] = useState('')
   const [editMode, setEditMode] = useState<'anonymous' | 'full'>('anonymous')
+  const [editAge, setEditAge] = useState('')
+  const [editBio, setEditBio] = useState('')
+  const [editInstagram, setEditInstagram] = useState('')
+  const [editWhatsapp, setEditWhatsapp] = useState('')
   const [editSaving, setEditSaving] = useState(false)
 
+  // Report & Block
   const [menuTarget, setMenuTarget] = useState<PersonHere | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportReason, setReportReason] = useState('')
@@ -93,6 +69,7 @@ function PeopleHereList() {
   const [blockConfirm, setBlockConfirm] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [exitConfirm, setExitConfirm] = useState(false)
 
   const userIdRef = useRef<string | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -105,7 +82,6 @@ function PeopleHereList() {
     async function boot() {
       const { data: auth } = await supabase.auth.getUser()
       if (!auth.user) { router.push('/'); return }
-
       const uid = auth.user.id
       userIdRef.current = uid
       setCurrentUserId(uid)
@@ -114,19 +90,14 @@ function PeopleHereList() {
       if (shop) setShopName(shop.name)
 
       const { data: myProf } = await supabase.from('profiles').select('*').eq('user_id', uid).single()
-      if (myProf) {
-        setMyProfile(myProf as unknown as Profile)
-        setEditName(myProf.display_name)
-        setEditMode(myProf.is_anonymous ? 'anonymous' : 'full')
-      }
+      if (myProf) setMyProfile(myProf as unknown as Profile)
 
       await fetchPeople(uid, supabase)
 
       const channel = supabase
         .channel(`people-${shopId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'coffee_shop_sessions', filter: `coffee_shop_id=eq.${shopId}` },
-          () => { if (userIdRef.current) fetchPeople(userIdRef.current, supabase) }
-        )
+          () => { if (userIdRef.current) fetchPeople(userIdRef.current, supabase) })
         .subscribe()
 
       channelRef.current = channel
@@ -136,7 +107,6 @@ function PeopleHereList() {
     }
 
     boot()
-
     return () => {
       if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
@@ -148,19 +118,15 @@ function PeopleHereList() {
     const blockedIds = new Set((myBlocks ?? []).map((b: { blocked_user_id: string }) => b.blocked_user_id))
 
     const { data: sessions } = await supabase
-      .from('coffee_shop_sessions')
-      .select('id, user_id')
-      .eq('coffee_shop_id', shopId)
-      .eq('status', 'active')
-      .gt('expires_at', new Date().toISOString())
-      .neq('user_id', uid)
+      .from('coffee_shop_sessions').select('id, user_id')
+      .eq('coffee_shop_id', shopId).eq('status', 'active')
+      .gt('expires_at', new Date().toISOString()).neq('user_id', uid)
 
     const filtered = (sessions ?? []).filter((s) => !blockedIds.has(s.user_id))
     if (filtered.length === 0) { setPeople([]); setLoading(false); return }
 
     const userIds = filtered.map((s) => s.user_id)
     const { data: profiles } = await supabase.from('profiles').select('*').in('user_id', userIds)
-
     if (profiles) {
       const sessionMap = Object.fromEntries(filtered.map((s) => [s.user_id, s.id]))
       setPeople(profiles.map((p) => ({ ...(p as unknown as Profile), session_id: sessionMap[p.user_id] })))
@@ -173,28 +139,43 @@ function PeopleHereList() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  function openEdit() {
+    if (myProfile) {
+      setEditName(myProfile.display_name)
+      setEditMode(myProfile.is_anonymous ? 'anonymous' : 'full')
+      setEditAge(myProfile.age ? String(myProfile.age) : '')
+      setEditBio(myProfile.bio ?? '')
+      setEditInstagram(myProfile.instagram ?? '')
+      setEditWhatsapp(myProfile.whatsapp ?? '')
+    }
+    setEditOpen(true)
+  }
+
+  async function handleExit() {
+    if (!currentUserId) { router.push('/'); return }
+    setExitLoading(true)
+    const supabase = createClient()
+    await supabase.from('coffee_shop_sessions')
+      .update({ status: 'left' })
+      .eq('user_id', currentUserId)
+      .eq('coffee_shop_id', shopId!)
+      .eq('status', 'active')
+    router.push('/')
+  }
+
   async function handleSayHi(receiverId: string) {
     if (!currentUserId || sayingHiTo.has(receiverId)) return
     setSayingHiTo((prev) => new Set(prev).add(receiverId))
-
     const supabase = createClient()
     try {
       await supabase.from('interactions').insert({ sender_id: currentUserId, receiver_id: receiverId, type: 'say_hi' })
-
       const { data: existing } = await supabase
-        .from('conversations')
-        .select('id')
+        .from('conversations').select('id')
         .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`)
         .maybeSingle()
-
       if (existing?.id) { router.push(`/chat/${existing.id}`); return }
-
       const { data: convo, error } = await supabase
-        .from('conversations')
-        .insert({ user_one_id: currentUserId, user_two_id: receiverId })
-        .select('id')
-        .single()
-
+        .from('conversations').insert({ user_one_id: currentUserId, user_two_id: receiverId }).select('id').single()
       if (error || !convo) { showToast('Gagal memulai chat. Coba lagi.'); return }
       router.push(`/chat/${convo.id}`)
     } catch {
@@ -210,10 +191,23 @@ function PeopleHereList() {
     if (!name || !currentUserId) return
     setEditSaving(true)
     const supabase = createClient()
-    await supabase.from('profiles').upsert({ user_id: currentUserId, display_name: name, is_anonymous: editMode === 'anonymous', chat_enabled: true }, { onConflict: 'user_id' })
-    setMyProfile((prev) => prev ? { ...prev, display_name: name, is_anonymous: editMode === 'anonymous' } : prev)
+    const updates = {
+      user_id: currentUserId,
+      display_name: name,
+      is_anonymous: editMode === 'anonymous',
+      chat_enabled: true,
+      ...(editMode === 'full' && {
+        age: editAge ? parseInt(editAge) : null,
+        bio: editBio.trim() || null,
+        instagram: editInstagram.trim() || null,
+        whatsapp: editWhatsapp.trim() || null,
+      }),
+    }
+    await supabase.from('profiles').upsert(updates, { onConflict: 'user_id' })
+    setMyProfile((prev) => prev ? { ...prev, ...updates } as Profile : prev)
     setEditOpen(false)
     setEditSaving(false)
+    showToast('Profil berhasil diperbarui')
   }
 
   async function handleBlock() {
@@ -222,9 +216,7 @@ function PeopleHereList() {
     const supabase = createClient()
     await supabase.from('blocks').insert({ user_id: currentUserId, blocked_user_id: menuTarget.user_id })
     setPeople((prev) => prev.filter((p) => p.user_id !== menuTarget.user_id))
-    setBlockConfirm(false)
-    setMenuTarget(null)
-    setActionLoading(false)
+    setBlockConfirm(false); setMenuTarget(null); setActionLoading(false)
     showToast('Pengguna telah diblokir')
   }
 
@@ -234,21 +226,15 @@ function PeopleHereList() {
     setActionLoading(true)
     const supabase = createClient()
     await supabase.from('reports').insert({ reporter_id: currentUserId, reported_user_id: menuTarget.user_id, reason: reportReason, description: reportDesc.trim() || null })
-    setReportOpen(false)
-    setMenuTarget(null)
-    setReportReason('')
-    setReportDesc('')
-    setActionLoading(false)
+    setReportOpen(false); setMenuTarget(null); setReportReason(''); setReportDesc(''); setActionLoading(false)
     showToast('Laporan berhasil dikirim')
   }
 
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm animate-pulse">Memuat...</p>
-      </main>
-    )
-  }
+  if (loading) return (
+    <main className="flex min-h-screen items-center justify-center">
+      <p className="text-muted-foreground text-sm animate-pulse">Memuat...</p>
+    </main>
+  )
 
   return (
     <main className="min-h-screen px-4 py-6 max-w-lg mx-auto">
@@ -258,26 +244,22 @@ function PeopleHereList() {
           <h1 className="text-xl font-bold">People Here</h1>
           <p className="text-sm text-muted-foreground">☕ {shopName}</p>
         </div>
-        <button
-          onClick={() => setEditOpen(true)}
-          className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm border border-border hover:bg-muted transition"
-        >
-          <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={myProfile?.is_anonymous ?? true} size={28} />
-          <span className="font-medium truncate max-w-[80px]">{myProfile?.display_name ?? 'Kamu'}</span>
-          <span className="text-xs text-muted-foreground">✏️</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={openEdit} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm border border-border hover:bg-muted transition">
+            <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={myProfile?.is_anonymous ?? true} size={26} />
+            <span className="font-medium truncate max-w-[70px]">{myProfile?.display_name ?? 'Kamu'}</span>
+            <span className="text-xs text-muted-foreground">✏️</span>
+          </button>
+          <button onClick={() => setExitConfirm(true)} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition text-base" title="Keluar">
+            🚪
+          </button>
+        </div>
       </div>
 
-      {/* Legend */}
+      {/* Count bar */}
       <div className="flex items-center gap-3 mb-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 rounded-full bg-stone-200 flex items-center justify-center text-[10px]">🕵️</div>
-          <span>Anonim</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 rounded-full" style={{ background: 'linear-gradient(135deg, #c8763a, #e8a265)' }} />
-          <span>Profil lengkap</span>
-        </div>
+        <div className="flex items-center gap-1.5"><div className="w-4 h-4 rounded-full bg-stone-200 flex items-center justify-center text-[10px]">🕵️</div><span>Anonim</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-4 h-4 rounded-full" style={{ background: 'linear-gradient(135deg, #c8763a, #e8a265)' }} /><span>Profil lengkap</span></div>
         <div className="ml-auto font-medium text-foreground">{people.length} orang</div>
       </div>
 
@@ -291,76 +273,40 @@ function PeopleHereList() {
         <div className="space-y-3">
           {people.map((person) => {
             const isAnon = person.is_anonymous
-            const loading = sayingHiTo.has(person.user_id)
+            const isLoading = sayingHiTo.has(person.user_id)
             return (
-              <div
-                key={person.id}
-                className="rounded-2xl p-4 flex items-center gap-3 border transition"
-                style={{
-                  backgroundColor: isAnon ? '#f3f4f6' : '#ffffff',
-                  borderColor: isAnon ? '#d1d5db' : '#e5ddd5',
-                  borderStyle: isAnon ? 'dashed' : 'solid',
-                }}
-              >
+              <div key={person.id} className="rounded-2xl p-4 flex items-center gap-3 border transition"
+                style={{ backgroundColor: isAnon ? '#f3f4f6' : '#ffffff', borderColor: isAnon ? '#d1d5db' : '#e5ddd5', borderStyle: isAnon ? 'dashed' : 'solid' }}>
                 <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={48} />
-
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="font-semibold truncate" style={{ color: isAnon ? '#6b7280' : '#1a1a1a' }}>
-                      {person.display_name}
-                    </p>
-                    {!isAnon && person.gender && (
-                      <span className="text-muted-foreground text-sm">{GENDER_EMOJI[person.gender]}</span>
-                    )}
-                    {isAnon ? (
-                      <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-md font-medium">
-                        anonim
-                      </span>
-                    ) : (
-                      <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md font-medium">
-                        profil lengkap
-                      </span>
-                    )}
+                    <p className="font-semibold truncate" style={{ color: isAnon ? '#6b7280' : '#1a1a1a' }}>{person.display_name}</p>
+                    {!isAnon && person.gender && <span className="text-muted-foreground text-sm">{GENDER_EMOJI[person.gender]}</span>}
+                    {isAnon
+                      ? <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-md font-medium">anonim</span>
+                      : <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md font-medium">profil lengkap</span>
+                    }
                   </div>
-
-                  {!isAnon ? (
-                    <p className="text-sm text-muted-foreground truncate mt-0.5">
-                      {[person.age ? `${person.age} yo` : '', person.bio].filter(Boolean).join(' · ')}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-gray-400 mt-0.5">Identitas disembunyikan</p>
-                  )}
-
-                  {/* Social links for non-anon */}
+                  {!isAnon
+                    ? <p className="text-sm text-muted-foreground truncate mt-0.5">{[person.age ? `${person.age} yo` : '', person.bio].filter(Boolean).join(' · ')}</p>
+                    : <p className="text-xs text-gray-400 mt-0.5">Identitas disembunyikan</p>
+                  }
                   {!isAnon && (person.instagram || person.whatsapp) && (
                     <div className="flex items-center gap-2 mt-1">
-                      {person.instagram && (
-                        <span className="text-xs text-pink-500 bg-pink-50 px-1.5 py-0.5 rounded-md">📸 IG</span>
-                      )}
-                      {person.whatsapp && (
-                        <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded-md">💬 WA</span>
-                      )}
+                      {person.instagram && <span className="text-xs text-pink-500 bg-pink-50 px-1.5 py-0.5 rounded-md">📸 IG</span>}
+                      {person.whatsapp && <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded-md">💬 WA</span>}
                     </div>
                   )}
                 </div>
-
                 <div className="shrink-0 flex flex-col items-end gap-1.5">
                   {person.chat_enabled && (
-                    <button
-                      onClick={() => handleSayHi(person.user_id)}
-                      disabled={loading}
+                    <button onClick={() => handleSayHi(person.user_id)} disabled={isLoading}
                       className="px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-60"
-                      style={{ backgroundColor: loading ? '#d9a07e' : '#c8763a', color: '#fff' }}
-                    >
-                      {loading ? '...' : 'Say Hi 👋'}
+                      style={{ backgroundColor: isLoading ? '#d9a07e' : '#c8763a', color: '#fff' }}>
+                      {isLoading ? '...' : 'Say Hi 👋'}
                     </button>
                   )}
-                  <button
-                    onClick={() => setMenuTarget(person)}
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition text-xs"
-                  >
-                    •••
-                  </button>
+                  <button onClick={() => setMenuTarget(person)} className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition text-xs">•••</button>
                 </div>
               </div>
             )
@@ -368,33 +314,82 @@ function PeopleHereList() {
         </div>
       )}
 
-      <p className="text-center text-xs text-muted-foreground mt-8">
-        Sesi berakhir dalam 30 menit. Scan QR lagi untuk perpanjang.
-      </p>
+      <p className="text-center text-xs text-muted-foreground mt-8">Sesi berakhir dalam 30 menit. Scan QR lagi untuk perpanjang.</p>
+
+      {/* Exit Confirm */}
+      {exitConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setExitConfirm(false)}>
+          <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="text-3xl mb-3 text-center">🚪</div>
+            <h2 className="font-bold text-lg mb-1 text-center">Keluar dari sesi?</h2>
+            <p className="text-sm text-muted-foreground text-center mb-6">Kamu akan keluar dari <strong>{shopName}</strong>. Scan QR lagi untuk masuk kembali.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setExitConfirm(false)} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">Batal</button>
+              <button onClick={handleExit} disabled={exitLoading} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-50">
+                {exitLoading ? 'Keluar...' : 'Keluar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Identity Modal */}
       {editOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setEditOpen(false)}>
-          <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-bold text-lg mb-1">Ubah Tampilan</h2>
-            <p className="text-sm text-muted-foreground mb-4">Nama dan mode tampil kamu</p>
+          <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h2 className="font-bold text-lg mb-1">Edit Profil</h2>
+            <p className="text-sm text-muted-foreground mb-4">Ubah nama dan informasi kamu</p>
             <form onSubmit={handleSaveIdentity} className="space-y-4">
-              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nama atau nickname" maxLength={30} required autoFocus
-                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setEditMode('anonymous')}
-                  className={`py-3 rounded-xl border text-sm font-semibold transition ${editMode === 'anonymous' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
-                  🕵️ Anonim
-                </button>
-                <button type="button" onClick={() => setEditMode('full')}
-                  className={`py-3 rounded-xl border text-sm font-semibold transition ${editMode === 'full' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
-                  😊 Profil Lengkap
-                </button>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Nama / Nickname</label>
+                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nama atau nickname" maxLength={30} required autoFocus
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
               </div>
-              <p className="text-xs text-muted-foreground text-center">
-                {editMode === 'anonymous' ? '🕵️ Hanya nama yang terlihat — anonim' : '😊 Nama, usia, bio, dan sosmed terlihat'}
-              </p>
-              <div className="flex gap-3">
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Mode Tampil</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setEditMode('anonymous')}
+                    className={`py-3 rounded-xl border text-sm font-semibold transition ${editMode === 'anonymous' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
+                    🕵️ Anonim
+                  </button>
+                  <button type="button" onClick={() => setEditMode('full')}
+                    className={`py-3 rounded-xl border text-sm font-semibold transition ${editMode === 'full' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
+                    😊 Profil Lengkap
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  {editMode === 'anonymous' ? '🕵️ Hanya nama yang terlihat oleh orang lain' : '😊 Nama, usia, bio, dan sosmed terlihat'}
+                </p>
+              </div>
+
+              {editMode === 'full' && (
+                <div className="space-y-3 border border-border rounded-xl p-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Data Profil Lengkap</p>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Usia</label>
+                    <input type="number" value={editAge} onChange={(e) => setEditAge(e.target.value)} placeholder="Usia kamu" min={17} max={99}
+                      className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Bio</label>
+                    <textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} placeholder="Cerita singkat tentang kamu..." maxLength={150} rows={2}
+                      className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition resize-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Instagram</label>
+                    <input type="text" value={editInstagram} onChange={(e) => setEditInstagram(e.target.value)} placeholder="username (tanpa @)"
+                      className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">WhatsApp</label>
+                    <input type="text" value={editWhatsapp} onChange={(e) => setEditWhatsapp(e.target.value)} placeholder="Nomor HP (contoh: 08123...)"
+                      className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setEditOpen(false)} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">Batal</button>
                 <button type="submit" disabled={editSaving || !editName.trim()} className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-40">
                   {editSaving ? 'Menyimpan...' : 'Simpan'}
@@ -424,7 +419,7 @@ function PeopleHereList() {
         </div>
       )}
 
-      {/* Report Modal */}
+      {/* Report */}
       {reportOpen && menuTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => { setReportOpen(false); setMenuTarget(null) }}>
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -468,7 +463,6 @@ function PeopleHereList() {
         </div>
       )}
 
-      {/* Toast */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-sm font-medium px-5 py-3 rounded-2xl shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2">
           {toast}
@@ -479,9 +473,5 @@ function PeopleHereList() {
 }
 
 export default function PeoplePage() {
-  return (
-    <Suspense>
-      <PeopleHereList />
-    </Suspense>
-  )
+  return <Suspense><PeopleHereList /></Suspense>
 }
