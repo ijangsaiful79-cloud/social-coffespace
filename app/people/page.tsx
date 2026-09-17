@@ -25,6 +25,50 @@ const REPORT_REASONS = [
   'Lainnya',
 ]
 
+const AVATAR_GRADIENTS = [
+  ['#c8763a', '#e8a265'],
+  ['#7c6aad', '#a892d4'],
+  ['#2d9e6b', '#5cc99a'],
+  ['#c85c5c', '#e88585'],
+  ['#4a7fc1', '#7aaee8'],
+  ['#c88a3a', '#e8b865'],
+  ['#5a8a6a', '#83b890'],
+]
+
+function getGradient(str: string) {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length]
+}
+
+function Avatar({ name, avatarUrl, isAnonymous, size = 48 }: { name: string; avatarUrl?: string | null; isAnonymous: boolean; size?: number }) {
+  const gradient = getGradient(name)
+  if (isAnonymous) {
+    return (
+      <div
+        style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4 }}
+      >
+        🕵️
+      </div>
+    )
+  }
+  if (avatarUrl) {
+    return <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+  }
+  return (
+    <div
+      style={{
+        width: size, height: size, flexShrink: 0, borderRadius: '50%',
+        background: `linear-gradient(135deg, ${gradient[0]}, ${gradient[1]})`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#fff', fontWeight: 700, fontSize: size * 0.38, letterSpacing: '-0.5px',
+      }}
+    >
+      {name?.[0]?.toUpperCase() ?? '?'}
+    </div>
+  )
+}
+
 function PeopleHereList() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -35,14 +79,13 @@ function PeopleHereList() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sayingHiTo, setSayingHiTo] = useState<Set<string>>(new Set())
 
-  // Edit identity
   const [editOpen, setEditOpen] = useState(false)
   const [editName, setEditName] = useState('')
   const [editMode, setEditMode] = useState<'anonymous' | 'full'>('anonymous')
   const [editSaving, setEditSaving] = useState(false)
 
-  // Report & Block
   const [menuTarget, setMenuTarget] = useState<PersonHere | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportReason, setReportReason] = useState('')
@@ -57,7 +100,6 @@ function PeopleHereList() {
 
   useEffect(() => {
     if (!shopId) { router.push('/'); return }
-
     const supabase = createClient()
 
     async function boot() {
@@ -82,22 +124,12 @@ function PeopleHereList() {
 
       const channel = supabase
         .channel(`people-${shopId}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'coffee_shop_sessions', filter: `coffee_shop_id=eq.${shopId}` },
-          () => {
-            if (userIdRef.current) fetchPeople(userIdRef.current, supabase)
-          }
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'coffee_shop_sessions', filter: `coffee_shop_id=eq.${shopId}` },
+          () => { if (userIdRef.current) fetchPeople(userIdRef.current, supabase) }
         )
-        .subscribe((status) => {
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            if (userIdRef.current) fetchPeople(userIdRef.current, supabase)
-          }
-        })
+        .subscribe()
 
       channelRef.current = channel
-
-      // Polling fallback — handles missed realtime events & expired sessions
       pollRef.current = setInterval(() => {
         if (userIdRef.current) fetchPeople(userIdRef.current, supabase)
       }, 30_000)
@@ -106,24 +138,13 @@ function PeopleHereList() {
     boot()
 
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-        channelRef.current = null
-      }
-      if (pollRef.current) {
-        clearInterval(pollRef.current)
-        pollRef.current = null
-      }
+      if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
     }
   }, [shopId])
 
   async function fetchPeople(uid: string, supabase: ReturnType<typeof createClient>) {
-    // Fetch block list so we can exclude them
-    const { data: myBlocks } = await supabase
-      .from('blocks')
-      .select('blocked_user_id')
-      .eq('user_id', uid)
-
+    const { data: myBlocks } = await supabase.from('blocks').select('blocked_user_id').eq('user_id', uid)
     const blockedIds = new Set((myBlocks ?? []).map((b: { blocked_user_id: string }) => b.blocked_user_id))
 
     const { data: sessions } = await supabase
@@ -135,12 +156,7 @@ function PeopleHereList() {
       .neq('user_id', uid)
 
     const filtered = (sessions ?? []).filter((s) => !blockedIds.has(s.user_id))
-
-    if (filtered.length === 0) {
-      setPeople([])
-      setLoading(false)
-      return
-    }
+    if (filtered.length === 0) { setPeople([]); setLoading(false); return }
 
     const userIds = filtered.map((s) => s.user_id)
     const { data: profiles } = await supabase.from('profiles').select('*').in('user_id', userIds)
@@ -149,7 +165,6 @@ function PeopleHereList() {
       const sessionMap = Object.fromEntries(filtered.map((s) => [s.user_id, s.id]))
       setPeople(profiles.map((p) => ({ ...(p as unknown as Profile), session_id: sessionMap[p.user_id] })))
     }
-
     setLoading(false)
   }
 
@@ -159,26 +174,34 @@ function PeopleHereList() {
   }
 
   async function handleSayHi(receiverId: string) {
-    if (!currentUserId) return
+    if (!currentUserId || sayingHiTo.has(receiverId)) return
+    setSayingHiTo((prev) => new Set(prev).add(receiverId))
+
     const supabase = createClient()
+    try {
+      await supabase.from('interactions').insert({ sender_id: currentUserId, receiver_id: receiverId, type: 'say_hi' })
 
-    await supabase.from('interactions').insert({ sender_id: currentUserId, receiver_id: receiverId, type: 'say_hi' })
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`)
+        .maybeSingle()
 
-    const { data: existing } = await supabase
-      .from('conversations')
-      .select('id')
-      .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`)
-      .single()
+      if (existing?.id) { router.push(`/chat/${existing.id}`); return }
 
-    if (existing) { router.push(`/chat/${existing.id}`); return }
+      const { data: convo, error } = await supabase
+        .from('conversations')
+        .insert({ user_one_id: currentUserId, user_two_id: receiverId })
+        .select('id')
+        .single()
 
-    const { data: convo } = await supabase
-      .from('conversations')
-      .insert({ user_one_id: currentUserId, user_two_id: receiverId })
-      .select('id')
-      .single()
-
-    if (convo) router.push(`/chat/${convo.id}`)
+      if (error || !convo) { showToast('Gagal memulai chat. Coba lagi.'); return }
+      router.push(`/chat/${convo.id}`)
+    } catch {
+      showToast('Gagal memulai chat. Coba lagi.')
+    } finally {
+      setSayingHiTo((prev) => { const s = new Set(prev); s.delete(receiverId); return s })
+    }
   }
 
   async function handleSaveIdentity(e: React.FormEvent) {
@@ -186,15 +209,8 @@ function PeopleHereList() {
     const name = editName.trim()
     if (!name || !currentUserId) return
     setEditSaving(true)
-
     const supabase = createClient()
-    await supabase.from('profiles').upsert({
-      user_id: currentUserId,
-      display_name: name,
-      is_anonymous: editMode === 'anonymous',
-      chat_enabled: true,
-    }, { onConflict: 'user_id' })
-
+    await supabase.from('profiles').upsert({ user_id: currentUserId, display_name: name, is_anonymous: editMode === 'anonymous', chat_enabled: true }, { onConflict: 'user_id' })
     setMyProfile((prev) => prev ? { ...prev, display_name: name, is_anonymous: editMode === 'anonymous' } : prev)
     setEditOpen(false)
     setEditSaving(false)
@@ -204,12 +220,7 @@ function PeopleHereList() {
     if (!currentUserId || !menuTarget) return
     setActionLoading(true)
     const supabase = createClient()
-
-    await supabase.from('blocks').insert({
-      user_id: currentUserId,
-      blocked_user_id: menuTarget.user_id,
-    })
-
+    await supabase.from('blocks').insert({ user_id: currentUserId, blocked_user_id: menuTarget.user_id })
     setPeople((prev) => prev.filter((p) => p.user_id !== menuTarget.user_id))
     setBlockConfirm(false)
     setMenuTarget(null)
@@ -222,14 +233,7 @@ function PeopleHereList() {
     if (!currentUserId || !menuTarget || !reportReason) return
     setActionLoading(true)
     const supabase = createClient()
-
-    await supabase.from('reports').insert({
-      reporter_id: currentUserId,
-      reported_user_id: menuTarget.user_id,
-      reason: reportReason,
-      description: reportDesc.trim() || null,
-    })
-
+    await supabase.from('reports').insert({ reporter_id: currentUserId, reported_user_id: menuTarget.user_id, reason: reportReason, description: reportDesc.trim() || null })
     setReportOpen(false)
     setMenuTarget(null)
     setReportReason('')
@@ -241,26 +245,40 @@ function PeopleHereList() {
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm animate-pulse">Loading...</p>
+        <p className="text-muted-foreground text-sm animate-pulse">Memuat...</p>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 max-w-lg mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <main className="min-h-screen px-4 py-6 max-w-lg mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold">People Here</h1>
           <p className="text-sm text-muted-foreground">☕ {shopName}</p>
         </div>
         <button
           onClick={() => setEditOpen(true)}
-          className="flex items-center gap-1.5 bg-muted rounded-xl px-3 py-2 text-sm hover:bg-border transition"
+          className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm border border-border hover:bg-muted transition"
         >
-          <span className="font-medium truncate max-w-[100px]">{myProfile?.display_name ?? 'Kamu'}</span>
-          <span className="text-xs">{myProfile?.is_anonymous ? '🕵️' : '😊'}</span>
-          <span className="text-muted-foreground text-xs">✏️</span>
+          <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={myProfile?.is_anonymous ?? true} size={28} />
+          <span className="font-medium truncate max-w-[80px]">{myProfile?.display_name ?? 'Kamu'}</span>
+          <span className="text-xs text-muted-foreground">✏️</span>
         </button>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 mb-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-4 rounded-full bg-stone-200 flex items-center justify-center text-[10px]">🕵️</div>
+          <span>Anonim</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-4 rounded-full" style={{ background: 'linear-gradient(135deg, #c8763a, #e8a265)' }} />
+          <span>Profil lengkap</span>
+        </div>
+        <div className="ml-auto font-medium text-foreground">{people.length} orang</div>
       </div>
 
       {people.length === 0 ? (
@@ -271,56 +289,87 @@ function PeopleHereList() {
         </div>
       ) : (
         <div className="space-y-3">
-          {people.map((person) => (
-            <div key={person.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-xl font-bold text-primary shrink-0">
-                {person.avatar_url
-                  ? <img src={person.avatar_url} alt={person.display_name} className="w-full h-full rounded-full object-cover" />
-                  : person.display_name?.[0]?.toUpperCase() ?? '?'
-                }
-              </div>
+          {people.map((person) => {
+            const isAnon = person.is_anonymous
+            const loading = sayingHiTo.has(person.user_id)
+            return (
+              <div
+                key={person.id}
+                className="rounded-2xl p-4 flex items-center gap-3 border transition"
+                style={{
+                  backgroundColor: isAnon ? '#f3f4f6' : '#ffffff',
+                  borderColor: isAnon ? '#d1d5db' : '#e5ddd5',
+                  borderStyle: isAnon ? 'dashed' : 'solid',
+                }}
+              >
+                <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={48} />
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="font-semibold truncate">{person.display_name}</p>
-                  {!person.is_anonymous && person.gender && (
-                    <span className="text-muted-foreground text-sm">{GENDER_EMOJI[person.gender]}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-semibold truncate" style={{ color: isAnon ? '#6b7280' : '#1a1a1a' }}>
+                      {person.display_name}
+                    </p>
+                    {!isAnon && person.gender && (
+                      <span className="text-muted-foreground text-sm">{GENDER_EMOJI[person.gender]}</span>
+                    )}
+                    {isAnon ? (
+                      <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-md font-medium">
+                        anonim
+                      </span>
+                    ) : (
+                      <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md font-medium">
+                        profil lengkap
+                      </span>
+                    )}
+                  </div>
+
+                  {!isAnon ? (
+                    <p className="text-sm text-muted-foreground truncate mt-0.5">
+                      {[person.age ? `${person.age} yo` : '', person.bio].filter(Boolean).join(' · ')}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-0.5">Identitas disembunyikan</p>
                   )}
-                  {person.is_anonymous && (
-                    <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">anonim</span>
+
+                  {/* Social links for non-anon */}
+                  {!isAnon && (person.instagram || person.whatsapp) && (
+                    <div className="flex items-center gap-2 mt-1">
+                      {person.instagram && (
+                        <span className="text-xs text-pink-500 bg-pink-50 px-1.5 py-0.5 rounded-md">📸 IG</span>
+                      )}
+                      {person.whatsapp && (
+                        <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded-md">💬 WA</span>
+                      )}
+                    </div>
                   )}
                 </div>
-                {!person.is_anonymous && (
-                  <p className="text-sm text-muted-foreground truncate">
-                    {[person.age ? `${person.age} yo` : '', person.bio].filter(Boolean).join(' · ')}
-                  </p>
-                )}
-              </div>
 
-              <div className="shrink-0 flex items-center gap-2">
-                {person.chat_enabled && (
+                <div className="shrink-0 flex flex-col items-end gap-1.5">
+                  {person.chat_enabled && (
+                    <button
+                      onClick={() => handleSayHi(person.user_id)}
+                      disabled={loading}
+                      className="px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-60"
+                      style={{ backgroundColor: loading ? '#d9a07e' : '#c8763a', color: '#fff' }}
+                    >
+                      {loading ? '...' : 'Say Hi 👋'}
+                    </button>
+                  )}
                   <button
-                    onClick={() => handleSayHi(person.user_id)}
-                    className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition"
+                    onClick={() => setMenuTarget(person)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition text-xs"
                   >
-                    Say Hi 👋
+                    •••
                   </button>
-                )}
-                <button
-                  onClick={() => setMenuTarget(person)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition"
-                  aria-label="Opsi lainnya"
-                >
-                  •••
-                </button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
       <p className="text-center text-xs text-muted-foreground mt-8">
-        Sesi kamu berakhir dalam 30 menit. Scan QR lagi untuk perpanjang.
+        Sesi berakhir dalam 30 menit. Scan QR lagi untuk perpanjang.
       </p>
 
       {/* Edit Identity Modal */}
@@ -329,19 +378,9 @@ function PeopleHereList() {
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-bold text-lg mb-1">Ubah Tampilan</h2>
             <p className="text-sm text-muted-foreground mb-4">Nama dan mode tampil kamu</p>
-
             <form onSubmit={handleSaveIdentity} className="space-y-4">
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="Nama atau nickname"
-                maxLength={30}
-                required
-                autoFocus
-                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
-              />
-
+              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nama atau nickname" maxLength={30} required autoFocus
+                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setEditMode('anonymous')}
                   className={`py-3 rounded-xl border text-sm font-semibold transition ${editMode === 'anonymous' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
@@ -349,21 +388,15 @@ function PeopleHereList() {
                 </button>
                 <button type="button" onClick={() => setEditMode('full')}
                   className={`py-3 rounded-xl border text-sm font-semibold transition ${editMode === 'full' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
-                  😊 Tampil Lengkap
+                  😊 Profil Lengkap
                 </button>
               </div>
-
               <p className="text-xs text-muted-foreground text-center">
-                {editMode === 'anonymous' ? 'Hanya nama yang terlihat oleh orang lain' : 'Nama, usia, bio, dan sosmed kamu terlihat'}
+                {editMode === 'anonymous' ? '🕵️ Hanya nama yang terlihat — anonim' : '😊 Nama, usia, bio, dan sosmed terlihat'}
               </p>
-
               <div className="flex gap-3">
-                <button type="button" onClick={() => setEditOpen(false)}
-                  className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">
-                  Batal
-                </button>
-                <button type="submit" disabled={editSaving || !editName.trim()}
-                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-40">
+                <button type="button" onClick={() => setEditOpen(false)} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">Batal</button>
+                <button type="submit" disabled={editSaving || !editName.trim()} className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-40">
                   {editSaving ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>
@@ -372,34 +405,21 @@ function PeopleHereList() {
         </div>
       )}
 
-      {/* Action Sheet — Report / Block */}
+      {/* Action Sheet */}
       {menuTarget && !reportOpen && !blockConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setMenuTarget(null)}>
           <div className="bg-background rounded-2xl w-full max-w-sm shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-border">
               <p className="font-semibold">{menuTarget.display_name}</p>
-              <p className="text-xs text-muted-foreground">{menuTarget.is_anonymous ? 'Mode anonim' : 'Profil lengkap'}</p>
+              <p className="text-xs text-muted-foreground">{menuTarget.is_anonymous ? '🕵️ Mode anonim' : '😊 Profil lengkap'}</p>
             </div>
-            <button
-              onClick={() => setReportOpen(true)}
-              className="w-full px-5 py-4 text-left text-sm font-medium hover:bg-muted transition flex items-center gap-3"
-            >
-              <span className="text-lg">🚩</span>
-              <span>Laporkan pengguna ini</span>
+            <button onClick={() => setReportOpen(true)} className="w-full px-5 py-4 text-left text-sm font-medium hover:bg-muted transition flex items-center gap-3">
+              <span className="text-lg">🚩</span><span>Laporkan pengguna ini</span>
             </button>
-            <button
-              onClick={() => setBlockConfirm(true)}
-              className="w-full px-5 py-4 text-left text-sm font-medium text-red-500 hover:bg-red-50 transition flex items-center gap-3 border-t border-border"
-            >
-              <span className="text-lg">🚫</span>
-              <span>Blokir pengguna ini</span>
+            <button onClick={() => setBlockConfirm(true)} className="w-full px-5 py-4 text-left text-sm font-medium text-red-500 hover:bg-red-50 transition flex items-center gap-3 border-t border-border">
+              <span className="text-lg">🚫</span><span>Blokir pengguna ini</span>
             </button>
-            <button
-              onClick={() => setMenuTarget(null)}
-              className="w-full px-5 py-4 text-left text-sm text-muted-foreground hover:bg-muted transition border-t border-border"
-            >
-              Batal
-            </button>
+            <button onClick={() => setMenuTarget(null)} className="w-full px-5 py-4 text-left text-sm text-muted-foreground hover:bg-muted transition border-t border-border">Batal</button>
           </div>
         </div>
       )}
@@ -410,47 +430,20 @@ function PeopleHereList() {
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-bold text-lg mb-1">Laporkan Pengguna</h2>
             <p className="text-sm text-muted-foreground mb-4">Laporan kamu bersifat anonim dan akan ditinjau admin.</p>
-
             <form onSubmit={handleReport} className="space-y-4">
               <div className="space-y-2">
                 {REPORT_REASONS.map((reason) => (
-                  <button
-                    key={reason}
-                    type="button"
-                    onClick={() => setReportReason(reason)}
-                    className={`w-full px-4 py-3 rounded-xl border text-sm text-left transition ${
-                      reportReason === reason
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'border-border hover:bg-muted'
-                    }`}
-                  >
+                  <button key={reason} type="button" onClick={() => setReportReason(reason)}
+                    className={`w-full px-4 py-3 rounded-xl border text-sm text-left transition ${reportReason === reason ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
                     {reason}
                   </button>
                 ))}
               </div>
-
-              <textarea
-                value={reportDesc}
-                onChange={(e) => setReportDesc(e.target.value)}
-                placeholder="Keterangan tambahan (opsional)"
-                rows={2}
-                maxLength={300}
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
-              />
-
+              <textarea value={reportDesc} onChange={(e) => setReportDesc(e.target.value)} placeholder="Keterangan tambahan (opsional)" rows={2} maxLength={300}
+                className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition resize-none" />
               <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setReportOpen(false); setMenuTarget(null) }}
-                  className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={!reportReason || actionLoading}
-                  className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-40"
-                >
+                <button type="button" onClick={() => { setReportOpen(false); setMenuTarget(null) }} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">Batal</button>
+                <button type="submit" disabled={!reportReason || actionLoading} className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-40">
                   {actionLoading ? 'Mengirim...' : 'Kirim Laporan'}
                 </button>
               </div>
@@ -459,27 +452,15 @@ function PeopleHereList() {
         </div>
       )}
 
-      {/* Block Confirm Modal */}
+      {/* Block Confirm */}
       {blockConfirm && menuTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => { setBlockConfirm(false); setMenuTarget(null) }}>
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-bold text-lg mb-1">Blokir {menuTarget.display_name}?</h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              Mereka tidak akan muncul di daftar kamu. Kamu tidak akan bisa mengirim atau menerima pesan dari mereka.
-            </p>
-
+            <p className="text-sm text-muted-foreground mb-6">Mereka tidak akan muncul di daftar kamu dan tidak bisa mengirim pesan.</p>
             <div className="flex gap-3">
-              <button
-                onClick={() => { setBlockConfirm(false); setMenuTarget(null) }}
-                className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleBlock}
-                disabled={actionLoading}
-                className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-40"
-              >
+              <button onClick={() => { setBlockConfirm(false); setMenuTarget(null) }} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">Batal</button>
+              <button onClick={handleBlock} disabled={actionLoading} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-40">
                 {actionLoading ? 'Memblokir...' : 'Blokir'}
               </button>
             </div>
