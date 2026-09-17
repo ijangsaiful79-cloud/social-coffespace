@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Profile, Message } from '@/types'
+import { useLocationGuard } from '@/lib/hooks/useLocationGuard'
+import LocationExitAlert from '@/components/LocationExitAlert'
 
 interface PersonHere extends Profile { session_id: string }
 
@@ -98,15 +100,18 @@ function PeopleHereList() {
   const shopId = searchParams.get('shop')
 
   const [activeTab, setActiveTab] = useState<'people' | 'inbox'>('people')
+  const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female' | 'other'>('all')
   const [people, setPeople] = useState<PersonHere[]>([])
   const [inbox, setInbox] = useState<ConversationItem[]>([])
   const [inboxLoading, setInboxLoading] = useState(false)
   const [shopName, setShopName] = useState('')
+  const [shopCoords, setShopCoords] = useState<{ lat: number; lng: number; radius: number } | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [sayingHiTo, setSayingHiTo] = useState<Set<string>>(new Set())
   const [exitLoading, setExitLoading] = useState(false)
+  const [locationExitLoading, setLocationExitLoading] = useState(false)
   const [unreadTotal, setUnreadTotal] = useState(0)
 
   // Edit state
@@ -114,6 +119,7 @@ function PeopleHereList() {
   const [editName, setEditName] = useState('')
   const [editMode, setEditMode] = useState<'anonymous' | 'full'>('anonymous')
   const [editAge, setEditAge] = useState('')
+  const [editGender, setEditGender] = useState<'male' | 'female' | 'other' | 'prefer_not_to_say'>('prefer_not_to_say')
   const [editBio, setEditBio] = useState('')
   const [editInstagram, setEditInstagram] = useState('')
   const [editWhatsapp, setEditWhatsapp] = useState('')
@@ -128,6 +134,13 @@ function PeopleHereList() {
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [exitConfirm, setExitConfirm] = useState(false)
+
+  const { isOutside } = useLocationGuard({
+    lat: shopCoords?.lat ?? null,
+    lng: shopCoords?.lng ?? null,
+    radiusMeter: shopCoords?.radius ?? null,
+    enabled: !loading && !!shopCoords,
+  })
 
   const userIdRef = useRef<string | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
@@ -145,8 +158,13 @@ function PeopleHereList() {
       userIdRef.current = uid
       setCurrentUserId(uid)
 
-      const { data: shop } = await supabase.from('coffee_shops').select('name').eq('id', shopId).single()
-      if (shop) setShopName(shop.name)
+      const { data: shop } = await supabase.from('coffee_shops').select('name, latitude, longitude, radius_meter').eq('id', shopId).single()
+      if (shop) {
+        setShopName(shop.name)
+        const coords = { lat: shop.latitude, lng: shop.longitude, radius: shop.radius_meter }
+        setShopCoords(coords)
+        sessionStorage.setItem('shopContext', JSON.stringify({ id: shopId, name: shop.name, ...coords }))
+      }
 
       const { data: myProf } = await supabase.from('profiles').select('*').eq('user_id', uid).single()
       if (myProf) setMyProfile(myProf as unknown as Profile)
@@ -264,6 +282,7 @@ function PeopleHereList() {
       setEditName(myProfile.display_name)
       setEditMode(myProfile.is_anonymous ? 'anonymous' : 'full')
       setEditAge(myProfile.age ? String(myProfile.age) : '')
+      setEditGender(myProfile.gender ?? 'prefer_not_to_say')
       setEditBio(myProfile.bio ?? '')
       setEditInstagram(myProfile.instagram ?? '')
       setEditWhatsapp(myProfile.whatsapp ?? '')
@@ -280,6 +299,20 @@ function PeopleHereList() {
       .eq('user_id', currentUserId)
       .eq('coffee_shop_id', shopId!)
       .eq('status', 'active')
+    router.push('/')
+  }
+
+  async function handleLocationExit() {
+    setLocationExitLoading(true)
+    const supabase = createClient()
+    if (currentUserId && shopId) {
+      await supabase.from('coffee_shop_sessions')
+        .update({ status: 'left' })
+        .eq('user_id', currentUserId)
+        .eq('coffee_shop_id', shopId)
+        .eq('status', 'active')
+    }
+    sessionStorage.removeItem('shopContext')
     router.push('/')
   }
 
@@ -318,6 +351,7 @@ function PeopleHereList() {
       chat_enabled: true,
       ...(editMode === 'full' && {
         age: editAge ? parseInt(editAge) : null,
+        gender: editGender,
         bio: editBio.trim() || null,
         instagram: editInstagram.trim() || null,
         whatsapp: editWhatsapp.trim() || null,
@@ -408,24 +442,51 @@ function PeopleHereList() {
 
       {/* Tab Content */}
       <div className="flex-1 px-4 pb-6">
-        {activeTab === 'people' && (
+        {activeTab === 'people' && (() => {
+          const filteredPeople = genderFilter === 'all'
+            ? people
+            : people.filter((p) => {
+                if (p.is_anonymous) return false
+                if (genderFilter === 'other') return p.gender === 'other' || p.gender === 'prefer_not_to_say'
+                return p.gender === genderFilter
+              })
+          return (
           <>
-            {/* Legend */}
-            <div className="flex items-center gap-3 mb-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5"><div className="w-4 h-4 rounded-full bg-stone-200 flex items-center justify-center text-[10px]">🕵️</div><span>Anonim</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-4 h-4 rounded-full" style={{ background: 'linear-gradient(135deg, #c8763a, #e8a265)' }} /><span>Profil lengkap</span></div>
-              <div className="ml-auto font-medium text-foreground">{people.length} orang</div>
+            {/* Filter chips */}
+            <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1 scrollbar-none">
+              {([
+                { key: 'all', label: 'Semua' },
+                { key: 'female', label: '♀ Cewek' },
+                { key: 'male', label: '♂ Cowok' },
+                { key: 'other', label: '⚧ Lainnya' },
+              ] as const).map(({ key, label }) => (
+                <button key={key} onClick={() => setGenderFilter(key)}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${genderFilter === key ? 'bg-amber-600 text-white border-amber-600' : 'bg-background border-border text-muted-foreground hover:bg-muted'}`}>
+                  {label}
+                </button>
+              ))}
+              <span className="ml-auto shrink-0 text-xs text-muted-foreground font-medium">{filteredPeople.length} orang</span>
             </div>
 
-            {people.length === 0 ? (
+            {filteredPeople.length === 0 ? (
               <div className="text-center py-16">
-                <div className="text-5xl mb-4">☕</div>
-                <p className="font-semibold mb-1">Kamu yang pertama di sini</p>
-                <p className="text-sm text-muted-foreground">Orang lain akan muncul otomatis setelah bergabung.</p>
+                <div className="text-5xl mb-4">{genderFilter === 'all' ? '☕' : '🔍'}</div>
+                {genderFilter === 'all' ? (
+                  <>
+                    <p className="font-semibold mb-1">Kamu yang pertama di sini</p>
+                    <p className="text-sm text-muted-foreground">Orang lain akan muncul otomatis setelah bergabung.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold mb-1">Tidak ada hasil</p>
+                    <p className="text-sm text-muted-foreground">Tidak ada orang dengan filter ini sekarang.</p>
+                    <button onClick={() => setGenderFilter('all')} className="mt-3 px-4 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-muted transition">Tampilkan semua</button>
+                  </>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
-                {people.map((person) => {
+                {filteredPeople.map((person) => {
                   const isAnon = person.is_anonymous
                   const isLoading = sayingHiTo.has(person.user_id)
                   return (
@@ -469,7 +530,8 @@ function PeopleHereList() {
             )}
             <p className="text-center text-xs text-muted-foreground mt-8">Sesi berakhir dalam 30 menit. Scan QR lagi untuk perpanjang.</p>
           </>
-        )}
+          )
+        })()}
 
         {activeTab === 'inbox' && (
           <>
@@ -541,6 +603,15 @@ function PeopleHereList() {
         )}
       </div>
 
+      {/* Location exit alert — blocks all interaction */}
+      {isOutside && (
+        <LocationExitAlert
+          shopName={shopName}
+          onExit={handleLocationExit}
+          loading={locationExitLoading}
+        />
+      )}
+
       {/* Toast */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl bg-foreground text-background text-sm font-medium shadow-lg">
@@ -602,6 +673,21 @@ function PeopleHereList() {
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Usia</label>
                     <input type="number" value={editAge} onChange={(e) => setEditAge(e.target.value)} placeholder="Usia kamu" min={17} max={99}
                       className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">Gender</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { value: 'female', label: '♀ Cewek' },
+                        { value: 'male', label: '♂ Cowok' },
+                        { value: 'prefer_not_to_say', label: '— Skip' },
+                      ] as const).map(({ value, label }) => (
+                        <button key={value} type="button" onClick={() => setEditGender(value)}
+                          className={`py-2 rounded-lg border text-xs font-semibold transition ${editGender === value ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Bio</label>

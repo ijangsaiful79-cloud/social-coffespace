@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Message, Profile } from '@/types'
+import { playNotificationSound } from '@/lib/notification-sound'
+import { useLocationGuard } from '@/lib/hooks/useLocationGuard'
+import LocationExitAlert from '@/components/LocationExitAlert'
 
 const REPORT_REASONS = [
   'Spam',
@@ -82,6 +85,8 @@ export default function ChatPage({ params }: Props) {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [shopContext, setShopContext] = useState<{ name: string; lat: number; lng: number; radius: number } | null>(null)
+  const [locationExitLoading, setLocationExitLoading] = useState(false)
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
@@ -90,11 +95,32 @@ export default function ChatPage({ params }: Props) {
   const [blockConfirm, setBlockConfirm] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+
+  const { isOutside } = useLocationGuard({
+    lat: shopContext?.lat ?? null,
+    lng: shopContext?.lng ?? null,
+    radiusMeter: shopContext?.radius ?? null,
+    enabled: !loading && !!shopContext,
+  })
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const currentUserIdRef = useRef<string | null>(null)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('shopContext')
+      if (raw) {
+        const ctx = JSON.parse(raw)
+        setShopContext({ name: ctx.name, lat: ctx.lat, lng: ctx.lng, radius: ctx.radius })
+      }
+    } catch {
+      // sessionStorage not available or invalid JSON
+    }
+  }, [])
 
   useEffect(() => {
     const supabase = createClient()
@@ -144,10 +170,16 @@ export default function ChatPage({ params }: Props) {
             if (prev.find((m) => m.id === msg.id)) return prev
             return [...prev, msg]
           })
-          // Mark as read if it's not ours
           if (msg.sender_id !== currentUserIdRef.current) {
+            playNotificationSound()
             supabase.from('messages').update({ read_at: new Date().toISOString() }).eq('id', msg.id).then(() => {})
           }
+        }
+      )
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+        (payload) => {
+          const deletedId = (payload.old as { id: string }).id
+          setMessages((prev) => prev.filter((m) => m.id !== deletedId))
         }
       )
       .subscribe()
@@ -156,6 +188,45 @@ export default function ChatPage({ params }: Props) {
   function showToast(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(null), 3000)
+  }
+
+  async function handleLocationExit() {
+    setLocationExitLoading(true)
+    const supabase = createClient()
+    if (currentUserId) {
+      const raw = sessionStorage.getItem('shopContext')
+      const ctx = raw ? JSON.parse(raw) : null
+      if (ctx?.id) {
+        await supabase.from('coffee_shop_sessions')
+          .update({ status: 'left' })
+          .eq('user_id', currentUserId)
+          .eq('coffee_shop_id', ctx.id)
+          .eq('status', 'active')
+      }
+    }
+    sessionStorage.removeItem('shopContext')
+    router.push('/')
+  }
+
+  function handleLongPressStart(msgId: string, isOwn: boolean) {
+    if (!isOwn) return
+    longPressTimer.current = setTimeout(() => setDeleteTargetId(msgId), 500)
+  }
+
+  function handleLongPressEnd() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }
+
+  async function deleteMessage() {
+    if (!deleteTargetId) return
+    const targetId = deleteTargetId
+    setDeleteTargetId(null)
+    setMessages((prev) => prev.filter((m) => m.id !== targetId))
+    const supabase = createClient()
+    await supabase.from('messages').delete().eq('id', targetId)
   }
 
   async function sendMessage(e: React.FormEvent) {
@@ -278,11 +349,17 @@ export default function ChatPage({ params }: Props) {
                   {showAvatar && <Avatar name={otherUser?.display_name ?? '?'} avatarUrl={otherUser?.avatar_url} isAnonymous={otherUser?.is_anonymous ?? true} size={28} />}
                 </div>
               )}
-              <div className={`max-w-[72%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                isOwn
-                  ? 'bg-primary text-primary-foreground rounded-br-sm'
-                  : 'bg-card border border-border rounded-bl-sm'
-              }`}>
+              <div
+                className={`max-w-[72%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed select-none ${
+                  isOwn
+                    ? 'bg-primary text-primary-foreground rounded-br-sm'
+                    : 'bg-card border border-border rounded-bl-sm'
+                }`}
+                onTouchStart={() => handleLongPressStart(msg.id, isOwn)}
+                onTouchEnd={handleLongPressEnd}
+                onTouchMove={handleLongPressEnd}
+                onContextMenu={(e) => { if (isOwn) { e.preventDefault(); setDeleteTargetId(msg.id) } }}
+              >
                 {msg.message}
                 <div className={`text-[10px] mt-1 ${isOwn ? 'text-primary-foreground/60 text-right' : 'text-muted-foreground'}`}>
                   {new Date(msg.created_at).toLocaleTimeString('id', { hour: '2-digit', minute: '2-digit' })}
@@ -378,6 +455,30 @@ export default function ChatPage({ params }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {deleteTargetId && (
+        <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setDeleteTargetId(null)}>
+          <div className="bg-background rounded-2xl w-full max-w-sm shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm text-muted-foreground text-center pt-4 pb-2 px-5">Hapus pesan ini?</p>
+            <div className="border-t border-border">
+              <button onClick={deleteMessage} className="w-full px-5 py-4 text-sm font-semibold text-red-500 hover:bg-red-50 transition">
+                Hapus
+              </button>
+              <button onClick={() => setDeleteTargetId(null)} className="w-full px-5 py-4 text-sm text-muted-foreground hover:bg-muted transition border-t border-border">
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isOutside && shopContext && (
+        <LocationExitAlert
+          shopName={shopContext.name}
+          onExit={handleLocationExit}
+          loading={locationExitLoading}
+        />
       )}
 
       {toast && (

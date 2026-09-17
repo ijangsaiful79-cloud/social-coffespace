@@ -11,7 +11,16 @@ self.addEventListener('push', function (event) {
     tag: data.tag || 'chat',
     renotify: true,
   }
-  event.waitUntil(self.registration.showNotification(title, options))
+
+  const notifyClients = self.clients
+    .matchAll({ type: 'window', includeUncontrolled: true })
+    .then((clientList) => {
+      clientList.forEach((client) => client.postMessage({ type: 'PLAY_NOTIFICATION_SOUND' }))
+    })
+
+  event.waitUntil(
+    Promise.all([self.registration.showNotification(title, options), notifyClients])
+  )
 })
 
 self.addEventListener('notificationclick', function (event) {

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import NotificationSoundListener from "@/components/NotificationSoundListener";
 
 const geist = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,7 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${geist.variable} h-full`}>
       <body className="min-h-full bg-background text-foreground antialiased">
+        <NotificationSoundListener />
         {children}
       </body>
     </html>
