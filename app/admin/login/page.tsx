@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+
 export default function AdminLoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -33,43 +34,92 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted px-4">
+    <main
+      className="flex min-h-screen items-center justify-center px-4"
+      style={{ backgroundColor: '#f0ebe4' }}
+    >
       <div className="w-full max-w-sm">
-        {/* Card */}
-        <div className="bg-card border border-border rounded-2xl px-8 py-10 shadow-sm">
+        <div
+          className="rounded-2xl px-8 py-10 shadow-sm"
+          style={{
+            backgroundColor: '#ffffff',
+            border: '1px solid #e5ddd5',
+          }}
+        >
           <div className="text-center mb-8">
             <div className="text-4xl mb-3">☕</div>
-            <h1 className="text-xl font-bold">Super Admin</h1>
-            <p className="text-sm text-muted-foreground mt-1">Coffee Dating Management</p>
+            <h1 className="text-xl font-bold" style={{ color: '#1a1a1a' }}>
+              Super Admin
+            </h1>
+            <p className="text-sm mt-1" style={{ color: '#6b6560' }}>
+              Coffee Dating Management
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1.5">Email</label>
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: '#1a1a1a' }}
+              >
+                Email
+              </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@email.com"
-                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition"
+                style={{
+                  backgroundColor: '#faf8f5',
+                  border: '1px solid #e5ddd5',
+                  color: '#1a1a1a',
+                }}
+                onFocus={(e) =>
+                  (e.currentTarget.style.boxShadow =
+                    '0 0 0 3px rgba(200,118,58,0.2)')
+                }
+                onBlur={(e) => (e.currentTarget.style.boxShadow = 'none')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">Password</label>
+              <label
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: '#1a1a1a' }}
+              >
+                Password
+              </label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition"
+                style={{
+                  backgroundColor: '#faf8f5',
+                  border: '1px solid #e5ddd5',
+                  color: '#1a1a1a',
+                }}
+                onFocus={(e) =>
+                  (e.currentTarget.style.boxShadow =
+                    '0 0 0 3px rgba(200,118,58,0.2)')
+                }
+                onBlur={(e) => (e.currentTarget.style.boxShadow = 'none')}
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600 text-center">
+              <div
+                className="rounded-xl px-4 py-3 text-sm text-center"
+                style={{
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#dc2626',
+                }}
+              >
                 {error}
               </div>
             )}
@@ -77,14 +127,20 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-60 mt-2"
+              className="w-full py-3 rounded-xl font-semibold text-sm transition mt-2"
+              style={{
+                backgroundColor: loading ? '#d9a07e' : '#c8763a',
+                color: '#ffffff',
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
             >
               {loading ? 'Masuk...' : 'Masuk ke Dashboard'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-4">
+        <p className="text-center text-xs mt-4" style={{ color: '#6b6560' }}>
           Hanya untuk tim internal Coffee Dating
         </p>
       </div>
