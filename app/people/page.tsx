@@ -7,6 +7,11 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Profile, Message } from '@/types'
 import { useLocationGuard } from '@/lib/hooks/useLocationGuard'
 import LocationExitAlert from '@/components/LocationExitAlert'
+import PushPromptBanner from '@/components/PushPromptBanner'
+import {
+  Users, MessageSquare, LogOut, Pencil, MoreHorizontal, Trash2,
+  Flag, Ban, X, Coffee, EyeOff, Phone, UserRound,
+} from 'lucide-react'
 
 interface PersonHere extends Profile { session_id: string }
 
@@ -17,8 +22,8 @@ interface ConversationItem {
   unreadCount: number
 }
 
-const GENDER_EMOJI: Record<string, string> = {
-  male: '♂', female: '♀', other: '⚧', prefer_not_to_say: '',
+const GENDER_LABEL: Record<string, string> = {
+  male: 'M', female: 'F', other: '', prefer_not_to_say: '',
 }
 
 const REPORT_REASONS = ['Spam', 'Konten tidak pantas', 'Pelecehan atau intimidasi', 'Profil palsu', 'Lainnya']
@@ -36,8 +41,11 @@ function getGradient(str: string) {
 
 function Avatar({ name, avatarUrl, isAnonymous, size = 48 }: { name: string; avatarUrl?: string | null; isAnonymous: boolean; size?: number }) {
   const gradient = getGradient(name)
+  const iconSize = Math.round(size * 0.44)
   if (isAnonymous) return (
-    <div style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4 }}>🕵️</div>
+    <div style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', backgroundColor: '#e8e4e0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <EyeOff size={iconSize} color="#9b8d82" strokeWidth={1.75} />
+    </div>
   )
   if (avatarUrl) return <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
   return (
@@ -50,11 +58,11 @@ function Avatar({ name, avatarUrl, isAnonymous, size = 48 }: { name: string; ava
 async function registerPush(userId: string) {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
   if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) return
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
   try {
     const reg = await navigator.serviceWorker.register('/sw.js')
     await navigator.serviceWorker.ready
 
-    // Check if already subscribed
     const existing = await reg.pushManager.getSubscription()
     if (existing) {
       await fetch('/api/push/subscribe', {
@@ -64,6 +72,9 @@ async function registerPush(userId: string) {
       })
       return
     }
+
+    // iOS requires user gesture to request permission — let PushPromptBanner handle it
+    if (isIos) return
 
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') return
@@ -134,6 +145,8 @@ function PeopleHereList() {
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [exitConfirm, setExitConfirm] = useState(false)
+  const [deleteConvoId, setDeleteConvoId] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const { isOutside } = useLocationGuard({
     lat: shopCoords?.lat ?? null,
@@ -384,6 +397,20 @@ function PeopleHereList() {
     showToast('Laporan berhasil dikirim')
   }
 
+  async function handleDeleteConversation() {
+    if (!deleteConvoId) return
+    setDeleteLoading(true)
+    const supabase = createClient()
+    await supabase.from('messages').delete().eq('conversation_id', deleteConvoId)
+    await supabase.from('conversations').delete().eq('id', deleteConvoId)
+    setInbox((prev) => prev.filter((i) => i.id !== deleteConvoId))
+    const remaining = inbox.filter((i) => i.id !== deleteConvoId)
+    setUnreadTotal(remaining.reduce((sum, i) => sum + i.unreadCount, 0))
+    setDeleteConvoId(null)
+    setDeleteLoading(false)
+    showToast('Percakapan dihapus')
+  }
+
   if (loading) return (
     <main className="flex min-h-screen items-center justify-center">
       <p className="text-muted-foreground text-sm animate-pulse">Memuat...</p>
@@ -396,17 +423,20 @@ function PeopleHereList() {
       <div className="px-4 pt-6 pb-3">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold">Social Coffé</h1>
-            <p className="text-sm text-muted-foreground">☕ {shopName}</p>
+            <h1 className="font-display text-2xl font-bold tracking-wide" style={{ color: '#c8763a' }}>Social Coffé</h1>
+            <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
+              <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
+              {shopName}
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={openEdit} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm border border-border hover:bg-muted transition">
+            <button onClick={openEdit} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm border border-border hover:bg-muted transition min-h-[44px]">
               <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={myProfile?.is_anonymous ?? true} size={26} />
               <span className="font-medium truncate max-w-[70px]">{myProfile?.display_name ?? 'Kamu'}</span>
-              <span className="text-xs text-muted-foreground">✏️</span>
+              <Pencil size={13} strokeWidth={2} className="text-muted-foreground" />
             </button>
-            <button onClick={() => setExitConfirm(true)} className="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition text-base" title="Keluar">
-              🚪
+            <button onClick={() => setExitConfirm(true)} className="w-11 h-11 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition" title="Keluar">
+              <LogOut size={16} strokeWidth={2} />
             </button>
           </div>
         </div>
@@ -415,9 +445,9 @@ function PeopleHereList() {
         <div className="flex gap-1 bg-muted/50 rounded-xl p-1">
           <button
             onClick={() => setActiveTab('people')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition ${activeTab === 'people' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition min-h-[44px] ${activeTab === 'people' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            <span>👥</span>
+            <Users size={16} strokeWidth={2} />
             <span>Di Sini</span>
             {people.length > 0 && (
               <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === 'people' ? 'bg-amber-100 text-amber-700' : 'bg-muted text-muted-foreground'}`}>
@@ -427,9 +457,9 @@ function PeopleHereList() {
           </button>
           <button
             onClick={() => setActiveTab('inbox')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition ${activeTab === 'inbox' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition min-h-[44px] ${activeTab === 'inbox' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            <span>💬</span>
+            <MessageSquare size={16} strokeWidth={2} />
             <span>Inbox</span>
             {unreadTotal > 0 && (
               <span className="text-xs px-1.5 py-0.5 rounded-full font-bold bg-red-500 text-white">
@@ -439,6 +469,11 @@ function PeopleHereList() {
           </button>
         </div>
       </div>
+
+      {/* Push notification banner */}
+      {currentUserId && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && (
+        <PushPromptBanner userId={currentUserId} vapidKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY} />
+      )}
 
       {/* Tab Content */}
       <div className="flex-1 px-4 pb-6">
@@ -456,9 +491,9 @@ function PeopleHereList() {
             <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1 scrollbar-none">
               {([
                 { key: 'all', label: 'Semua' },
-                { key: 'female', label: '♀ Cewek' },
-                { key: 'male', label: '♂ Cowok' },
-                { key: 'other', label: '⚧ Lainnya' },
+                { key: 'female', label: 'Cewek' },
+                { key: 'male', label: 'Cowok' },
+                { key: 'other', label: 'Lainnya' },
               ] as const).map(({ key, label }) => (
                 <button key={key} onClick={() => setGenderFilter(key)}
                   className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${genderFilter === key ? 'bg-amber-600 text-white border-amber-600' : 'bg-background border-border text-muted-foreground hover:bg-muted'}`}>
@@ -470,7 +505,9 @@ function PeopleHereList() {
 
             {filteredPeople.length === 0 ? (
               <div className="text-center py-16">
-                <div className="text-5xl mb-4">{genderFilter === 'all' ? '☕' : '🔍'}</div>
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                  {genderFilter === 'all' ? <Coffee size={28} strokeWidth={1.5} className="text-muted-foreground" /> : <Users size={28} strokeWidth={1.5} className="text-muted-foreground" />}
+                </div>
                 {genderFilter === 'all' ? (
                   <>
                     <p className="font-semibold mb-1">Kamu yang pertama di sini</p>
@@ -480,7 +517,7 @@ function PeopleHereList() {
                   <>
                     <p className="font-semibold mb-1">Tidak ada hasil</p>
                     <p className="text-sm text-muted-foreground">Tidak ada orang dengan filter ini sekarang.</p>
-                    <button onClick={() => setGenderFilter('all')} className="mt-3 px-4 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-muted transition">Tampilkan semua</button>
+                    <button onClick={() => setGenderFilter('all')} className="mt-3 px-4 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-muted transition min-h-[44px]">Tampilkan semua</button>
                   </>
                 )}
               </div>
@@ -495,33 +532,41 @@ function PeopleHereList() {
                       <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={48} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="font-semibold truncate" style={{ color: isAnon ? '#6b7280' : '#1a1a1a' }}>{person.display_name}</p>
-                          {!isAnon && person.gender && <span className="text-muted-foreground text-sm">{GENDER_EMOJI[person.gender]}</span>}
+                          <p className="font-semibold truncate" style={{ color: isAnon ? '#78716c' : '#1a1209' }}>{person.display_name}</p>
+                          {!isAnon && person.gender && GENDER_LABEL[person.gender] && (
+                            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{GENDER_LABEL[person.gender]}</span>
+                          )}
                           {isAnon
-                            ? <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded-md font-medium">anonim</span>
-                            : <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md font-medium">profil lengkap</span>
+                            ? <span className="text-xs text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded-md font-medium">anonim</span>
+                            : <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md font-medium border border-amber-100">profil lengkap</span>
                           }
                         </div>
                         {!isAnon
                           ? <p className="text-sm text-muted-foreground truncate mt-0.5">{[person.age ? `${person.age} yo` : '', person.bio].filter(Boolean).join(' · ')}</p>
-                          : <p className="text-xs text-gray-400 mt-0.5">Identitas disembunyikan</p>
+                          : <p className="text-xs text-stone-400 mt-0.5 flex items-center gap-1"><EyeOff size={11} strokeWidth={2} />Identitas disembunyikan</p>
                         }
                         {!isAnon && (person.instagram || person.whatsapp) && (
-                          <div className="flex items-center gap-2 mt-1">
-                            {person.instagram && <span className="text-xs text-pink-500 bg-pink-50 px-1.5 py-0.5 rounded-md">📸 IG</span>}
-                            {person.whatsapp && <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded-md">💬 WA</span>}
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {person.instagram && <span className="flex items-center gap-1 text-xs text-pink-600 bg-pink-50 px-1.5 py-0.5 rounded-md border border-pink-100"><span className="text-[10px] font-bold">IG</span></span>}
+                            {person.whatsapp && <span className="flex items-center gap-1 text-xs text-green-700 bg-green-50 px-1.5 py-0.5 rounded-md border border-green-100"><Phone size={10} strokeWidth={2} />WA</span>}
                           </div>
                         )}
                       </div>
-                      <div className="shrink-0 flex flex-col items-end gap-1.5">
+                      <div className="shrink-0 flex flex-col items-end gap-2">
                         {person.chat_enabled && (
-                          <button onClick={() => handleSayHi(person.user_id)} disabled={isLoading}
-                            className="px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-60"
-                            style={{ backgroundColor: isLoading ? '#d9a07e' : '#c8763a', color: '#fff' }}>
-                            {isLoading ? '...' : 'Say Hi 👋'}
+                          <button
+                            onClick={() => handleSayHi(person.user_id)}
+                            disabled={isLoading}
+                            className="w-10 h-10 rounded-xl flex items-center justify-center transition disabled:opacity-50"
+                            style={{ backgroundColor: isLoading ? '#d9a07e' : '#c8763a' }}
+                            title="Mulai chat"
+                          >
+                            <MessageSquare size={17} color="#fff" strokeWidth={2} />
                           </button>
                         )}
-                        <button onClick={() => setMenuTarget(person)} className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition text-xs">•••</button>
+                        <button onClick={() => setMenuTarget(person)} className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted transition">
+                          <MoreHorizontal size={16} strokeWidth={2} />
+                        </button>
                       </div>
                     </div>
                   )
@@ -549,10 +594,12 @@ function PeopleHereList() {
               </div>
             ) : inbox.length === 0 ? (
               <div className="text-center py-16">
-                <div className="text-5xl mb-4">💬</div>
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare size={28} strokeWidth={1.5} className="text-muted-foreground" />
+                </div>
                 <p className="font-semibold mb-1">Belum ada percakapan</p>
                 <p className="text-sm text-muted-foreground">Say Hi ke seseorang untuk mulai ngobrol.</p>
-                <button onClick={() => setActiveTab('people')} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold transition" style={{ backgroundColor: '#c8763a', color: '#fff' }}>
+                <button onClick={() => setActiveTab('people')} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold transition min-h-[44px]" style={{ backgroundColor: '#c8763a', color: '#fff' }}>
                   Lihat orang di sini
                 </button>
               </div>
@@ -562,39 +609,50 @@ function PeopleHereList() {
                   const isAnon = item.otherUser?.is_anonymous ?? false
                   const hasUnread = item.unreadCount > 0
                   return (
-                    <button
+                    <div
                       key={item.id}
-                      onClick={() => router.push(`/chat/${item.id}`)}
-                      className="w-full flex items-center gap-3 p-4 rounded-2xl border transition text-left hover:bg-muted/40 active:scale-[0.99]"
+                      className="w-full flex items-center gap-3 p-4 rounded-2xl border transition"
                       style={{ borderColor: hasUnread ? '#c8763a' : '#e5e7eb', backgroundColor: hasUnread ? '#fef9f5' : '#ffffff' }}
                     >
-                      <Avatar
-                        name={item.otherUser?.display_name ?? '?'}
-                        avatarUrl={item.otherUser?.avatar_url}
-                        isAnonymous={isAnon}
-                        size={48}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className={`font-semibold truncate text-sm ${hasUnread ? 'text-foreground' : 'text-foreground'}`}>
-                            {item.otherUser?.display_name ?? 'Pengguna'}
-                          </p>
-                          {item.lastMessage && (
-                            <span className="text-xs text-muted-foreground shrink-0">{formatTime(item.lastMessage.created_at)}</span>
-                          )}
+                      <button
+                        onClick={() => router.push(`/chat/${item.id}`)}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left active:scale-[0.99] transition"
+                      >
+                        <Avatar
+                          name={item.otherUser?.display_name ?? '?'}
+                          avatarUrl={item.otherUser?.avatar_url}
+                          isAnonymous={isAnon}
+                          size={48}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-semibold truncate text-sm text-foreground">
+                              {item.otherUser?.display_name ?? 'Pengguna'}
+                            </p>
+                            {item.lastMessage && (
+                              <span className="text-xs text-muted-foreground shrink-0">{formatTime(item.lastMessage.created_at)}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-0.5">
+                            <p className={`text-sm truncate ${hasUnread ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                              {item.lastMessage ? item.lastMessage.message : 'Belum ada pesan'}
+                            </p>
+                            {item.unreadCount > 0 && (
+                              <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
+                                {item.unreadCount > 9 ? '9+' : item.unreadCount}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between gap-2 mt-0.5">
-                          <p className={`text-sm truncate ${hasUnread ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                            {item.lastMessage ? item.lastMessage.message : 'Belum ada pesan'}
-                          </p>
-                          {item.unreadCount > 0 && (
-                            <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
-                              {item.unreadCount > 9 ? '9+' : item.unreadCount}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
+                      </button>
+                      <button
+                        onClick={() => setDeleteConvoId(item.id)}
+                        className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-muted-foreground hover:text-red-500 hover:bg-red-50 transition"
+                        title="Hapus percakapan"
+                      >
+                        <Trash2 size={15} strokeWidth={2} />
+                      </button>
+                    </div>
                   )
                 })}
               </div>
@@ -623,12 +681,14 @@ function PeopleHereList() {
       {exitConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setExitConfirm(false)}>
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="text-3xl mb-3 text-center">🚪</div>
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <LogOut size={22} strokeWidth={2} className="text-red-500" />
+            </div>
             <h2 className="font-bold text-lg mb-1 text-center">Keluar dari sesi?</h2>
             <p className="text-sm text-muted-foreground text-center mb-6">Kamu akan keluar dari <strong>{shopName}</strong>. Scan QR lagi untuk masuk kembali.</p>
             <div className="flex gap-3">
-              <button onClick={() => setExitConfirm(false)} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">Batal</button>
-              <button onClick={handleExit} disabled={exitLoading} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-50">
+              <button onClick={() => setExitConfirm(false)} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition min-h-[44px]">Batal</button>
+              <button onClick={handleExit} disabled={exitLoading} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-50 min-h-[44px]">
                 {exitLoading ? 'Keluar...' : 'Keluar'}
               </button>
             </div>
@@ -653,16 +713,16 @@ function PeopleHereList() {
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">Mode Tampil</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => setEditMode('anonymous')}
-                    className={`py-3 rounded-xl border text-sm font-semibold transition ${editMode === 'anonymous' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
-                    🕵️ Anonim
+                    className={`py-3 rounded-xl border text-sm font-semibold transition flex items-center justify-center gap-2 min-h-[44px] ${editMode === 'anonymous' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
+                    <EyeOff size={14} strokeWidth={2} /> Anonim
                   </button>
                   <button type="button" onClick={() => setEditMode('full')}
-                    className={`py-3 rounded-xl border text-sm font-semibold transition ${editMode === 'full' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
-                    😊 Profil Lengkap
+                    className={`py-3 rounded-xl border text-sm font-semibold transition flex items-center justify-center gap-2 min-h-[44px] ${editMode === 'full' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
+                    <UserRound size={14} strokeWidth={2} /> Profil Lengkap
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground text-center mt-2">
-                  {editMode === 'anonymous' ? '🕵️ Hanya nama yang terlihat oleh orang lain' : '😊 Nama, usia, bio, dan sosmed terlihat'}
+                  {editMode === 'anonymous' ? 'Hanya nama yang terlihat oleh orang lain' : 'Nama, usia, bio, dan sosmed terlihat'}
                 </p>
               </div>
 
@@ -678,9 +738,9 @@ function PeopleHereList() {
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Gender</label>
                     <div className="grid grid-cols-3 gap-2">
                       {([
-                        { value: 'female', label: '♀ Cewek' },
-                        { value: 'male', label: '♂ Cowok' },
-                        { value: 'prefer_not_to_say', label: '— Skip' },
+                        { value: 'female', label: 'Cewek' },
+                        { value: 'male', label: 'Cowok' },
+                        { value: 'prefer_not_to_say', label: 'Skip' },
                       ] as const).map(({ value, label }) => (
                         <button key={value} type="button" onClick={() => setEditGender(value)}
                           className={`py-2 rounded-lg border text-xs font-semibold transition ${editGender === value ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
@@ -724,15 +784,19 @@ function PeopleHereList() {
           <div className="bg-background rounded-2xl w-full max-w-sm shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-border">
               <p className="font-semibold">{menuTarget.display_name}</p>
-              <p className="text-xs text-muted-foreground">{menuTarget.is_anonymous ? '🕵️ Mode anonim' : '😊 Profil lengkap'}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                {menuTarget.is_anonymous ? <><EyeOff size={11} strokeWidth={2} />Mode anonim</> : <><UserRound size={11} strokeWidth={2} />Profil lengkap</>}
+              </p>
             </div>
-            <button onClick={() => setReportOpen(true)} className="w-full px-5 py-4 text-left text-sm font-medium hover:bg-muted transition flex items-center gap-3">
-              <span className="text-lg">🚩</span><span>Laporkan pengguna ini</span>
+            <button onClick={() => setReportOpen(true)} className="w-full px-5 py-4 text-left text-sm font-medium hover:bg-muted transition flex items-center gap-3 min-h-[52px]">
+              <Flag size={18} strokeWidth={1.75} className="text-amber-500" /><span>Laporkan pengguna ini</span>
             </button>
-            <button onClick={() => setBlockConfirm(true)} className="w-full px-5 py-4 text-left text-sm font-medium text-red-500 hover:bg-red-50 transition flex items-center gap-3 border-t border-border">
-              <span className="text-lg">🚫</span><span>Blokir pengguna ini</span>
+            <button onClick={() => setBlockConfirm(true)} className="w-full px-5 py-4 text-left text-sm font-medium text-red-500 hover:bg-red-50 transition flex items-center gap-3 border-t border-border min-h-[52px]">
+              <Ban size={18} strokeWidth={1.75} /><span>Blokir pengguna ini</span>
             </button>
-            <button onClick={() => setMenuTarget(null)} className="w-full px-5 py-4 text-left text-sm text-muted-foreground hover:bg-muted transition border-t border-border">Batal</button>
+            <button onClick={() => setMenuTarget(null)} className="w-full px-5 py-4 text-left text-sm text-muted-foreground hover:bg-muted transition border-t border-border flex items-center gap-3 min-h-[52px]">
+              <X size={16} strokeWidth={2} />Batal
+            </button>
           </div>
         </div>
       )}
@@ -765,16 +829,37 @@ function PeopleHereList() {
         </div>
       )}
 
+      {/* Delete Conversation Confirm */}
+      {deleteConvoId && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setDeleteConvoId(null)}>
+          <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <Trash2 size={22} strokeWidth={2} className="text-red-500" />
+            </div>
+            <h2 className="font-bold text-lg mb-1 text-center">Hapus percakapan?</h2>
+            <p className="text-sm text-muted-foreground text-center mb-6">Semua pesan dalam percakapan ini akan dihapus permanen.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConvoId(null)} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition min-h-[44px]">Batal</button>
+              <button onClick={handleDeleteConversation} disabled={deleteLoading} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-50 min-h-[44px]">
+                {deleteLoading ? 'Menghapus...' : 'Hapus'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Block Confirm */}
       {blockConfirm && menuTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => { setBlockConfirm(false); setMenuTarget(null) }}>
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="text-3xl mb-3 text-center">🚫</div>
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+              <Ban size={22} strokeWidth={2} className="text-red-500" />
+            </div>
             <h2 className="font-bold text-lg mb-1 text-center">Blokir {menuTarget.display_name}?</h2>
             <p className="text-sm text-muted-foreground text-center mb-6">Pengguna ini tidak akan bisa melihat atau menghubungi kamu.</p>
             <div className="flex gap-3">
-              <button onClick={() => { setBlockConfirm(false); setMenuTarget(null) }} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">Batal</button>
-              <button onClick={handleBlock} disabled={actionLoading} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-50">
+              <button onClick={() => { setBlockConfirm(false); setMenuTarget(null) }} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition min-h-[44px]">Batal</button>
+              <button onClick={handleBlock} disabled={actionLoading} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-50 min-h-[44px]">
                 {actionLoading ? 'Memblokir...' : 'Ya, Blokir'}
               </button>
             </div>

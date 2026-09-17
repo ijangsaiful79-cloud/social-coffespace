@@ -1,4 +1,5 @@
 let audioCtx: AudioContext | null = null
+let unlocked = false
 
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null
@@ -7,6 +8,23 @@ function getCtx(): AudioContext | null {
     return audioCtx
   } catch {
     return null
+  }
+}
+
+// Call on first user interaction to unlock AudioContext on iOS
+export function primeAudioContext() {
+  if (unlocked) return
+  const ctx = getCtx()
+  if (!ctx) return
+  try {
+    const buf = ctx.createBuffer(1, 1, 22050)
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    src.connect(ctx.destination)
+    src.start(0)
+    unlocked = true
+  } catch {
+    // ignore
   }
 }
 

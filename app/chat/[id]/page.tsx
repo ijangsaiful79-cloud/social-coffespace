@@ -8,6 +8,7 @@ import type { Message, Profile } from '@/types'
 import { playNotificationSound } from '@/lib/notification-sound'
 import { useLocationGuard } from '@/lib/hooks/useLocationGuard'
 import LocationExitAlert from '@/components/LocationExitAlert'
+import { ArrowLeft, MoreHorizontal, EyeOff, MessageCircle, Send, Flag, Ban, X, Trash2 } from 'lucide-react'
 
 const REPORT_REASONS = [
   'Spam',
@@ -34,8 +35,8 @@ function getGradient(str: string) {
 function Avatar({ name, avatarUrl, isAnonymous, size = 36 }: { name: string; avatarUrl?: string | null; isAnonymous: boolean; size?: number }) {
   if (isAnonymous) {
     return (
-      <div style={{ width: size, height: size, borderRadius: '50%', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.45, flexShrink: 0 }}>
-        🕵️
+      <div style={{ width: size, height: size, borderRadius: '50%', backgroundColor: '#e8e4e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <EyeOff size={Math.round(size * 0.44)} color="#9b8d82" strokeWidth={1.75} />
       </div>
     )
   }
@@ -52,8 +53,20 @@ function Avatar({ name, avatarUrl, isAnonymous, size = 36 }: { name: string; ava
 
 async function registerPush(userId: string) {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+  const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
   try {
     const reg = await navigator.serviceWorker.register('/sw.js')
+    await navigator.serviceWorker.ready
+    const existing = await reg.pushManager.getSubscription()
+    if (existing) {
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, subscription: existing }),
+      })
+      return
+    }
+    if (isIos) return
     const permission = await Notification.requestPermission()
     if (permission !== 'granted') return
     const sub = await reg.pushManager.subscribe({
@@ -66,7 +79,7 @@ async function registerPush(userId: string) {
       body: JSON.stringify({ userId, subscription: sub }),
     })
   } catch {
-    // Push not supported or denied — silently skip
+    // Push not supported or denied
   }
 }
 
@@ -261,7 +274,7 @@ export default function ChatPage({ params }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           receiverId: otherUserId,
-          title: `Pesan baru ☕`,
+          title: `Pesan baru`,
           body: messageText.length > 60 ? messageText.slice(0, 60) + '...' : messageText,
           url: `/chat/${conversationId}`,
         }),
@@ -318,22 +331,31 @@ export default function ChatPage({ params }: Props) {
     <main className="flex flex-col h-[100dvh] max-w-lg mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0">
-        <button onClick={() => router.back()} className="text-muted-foreground text-xl leading-none mr-1">←</button>
+        <button onClick={() => router.back()} className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition shrink-0">
+          <ArrowLeft size={18} strokeWidth={2} />
+        </button>
         <Avatar name={otherUser?.display_name ?? '?'} avatarUrl={otherUser?.avatar_url} isAnonymous={otherUser?.is_anonymous ?? true} size={38} />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm truncate">{otherUser?.display_name}</p>
-          <p className="text-xs text-muted-foreground">
-            {otherUser?.is_anonymous ? '🕵️ Mode anonim' : `😊${otherUser?.age ? ` ${otherUser.age} yo` : ''}`}
+          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+            {otherUser?.is_anonymous
+              ? <><EyeOff size={10} strokeWidth={2} />Mode anonim</>
+              : otherUser?.age ? `${otherUser.age} yo` : 'Profil lengkap'
+            }
           </p>
         </div>
-        <button onClick={() => setMenuOpen(true)} className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition text-lg shrink-0">•••</button>
+        <button onClick={() => setMenuOpen(true)} className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition shrink-0">
+          <MoreHorizontal size={18} strokeWidth={2} />
+        </button>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
         {messages.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-3xl mb-2">👋</div>
+            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+              <MessageCircle size={26} strokeWidth={1.5} className="text-muted-foreground" />
+            </div>
             <p className="text-sm text-muted-foreground font-medium">Mulai percakapan dengan {otherUser?.display_name}</p>
             <p className="text-xs text-muted-foreground mt-1">Pesan pertama kamu adalah awal dari sesuatu yang menarik</p>
           </div>
@@ -363,7 +385,7 @@ export default function ChatPage({ params }: Props) {
                 {msg.message}
                 <div className={`text-[10px] mt-1 ${isOwn ? 'text-primary-foreground/60 text-right' : 'text-muted-foreground'}`}>
                   {new Date(msg.created_at).toLocaleTimeString('id', { hour: '2-digit', minute: '2-digit' })}
-                  {isOwn && msg.read_at && ' ✓✓'}
+                  {isOwn && msg.read_at && ' ✓'}
                 </div>
               </div>
             </div>
@@ -385,9 +407,9 @@ export default function ChatPage({ params }: Props) {
         <button
           type="submit"
           disabled={!text.trim() || sending}
-          className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40 shrink-0 text-lg"
+          className="w-11 h-11 rounded-xl flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40 shrink-0"
         >
-          {sending ? '…' : '➤'}
+          <Send size={16} strokeWidth={2} className={sending ? 'opacity-50' : ''} />
         </button>
       </form>
 
@@ -399,16 +421,18 @@ export default function ChatPage({ params }: Props) {
               <Avatar name={otherUser?.display_name ?? '?'} avatarUrl={otherUser?.avatar_url} isAnonymous={otherUser?.is_anonymous ?? true} size={36} />
               <div>
                 <p className="font-semibold">{otherUser?.display_name}</p>
-                <p className="text-xs text-muted-foreground">{otherUser?.is_anonymous ? '🕵️ Mode anonim' : '😊 Profil lengkap'}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">{otherUser?.is_anonymous ? <><EyeOff size={11} strokeWidth={2} />Mode anonim</> : 'Profil lengkap'}</p>
               </div>
             </div>
-            <button onClick={() => { setReportOpen(true); setMenuOpen(false) }} className="w-full px-5 py-4 text-left text-sm font-medium hover:bg-muted transition flex items-center gap-3">
-              <span className="text-lg">🚩</span><span>Laporkan pengguna ini</span>
+            <button onClick={() => { setReportOpen(true); setMenuOpen(false) }} className="w-full px-5 py-4 text-left text-sm font-medium hover:bg-muted transition flex items-center gap-3 min-h-[52px]">
+              <Flag size={17} strokeWidth={1.75} className="text-amber-500" /><span>Laporkan pengguna ini</span>
             </button>
-            <button onClick={() => { setBlockConfirm(true); setMenuOpen(false) }} className="w-full px-5 py-4 text-left text-sm font-medium text-red-500 hover:bg-red-50 transition flex items-center gap-3 border-t border-border">
-              <span className="text-lg">🚫</span><span>Blokir pengguna ini</span>
+            <button onClick={() => { setBlockConfirm(true); setMenuOpen(false) }} className="w-full px-5 py-4 text-left text-sm font-medium text-red-500 hover:bg-red-50 transition flex items-center gap-3 border-t border-border min-h-[52px]">
+              <Ban size={17} strokeWidth={1.75} /><span>Blokir pengguna ini</span>
             </button>
-            <button onClick={() => setMenuOpen(false)} className="w-full px-5 py-4 text-left text-sm text-muted-foreground hover:bg-muted transition border-t border-border">Batal</button>
+            <button onClick={() => setMenuOpen(false)} className="w-full px-5 py-4 text-left text-sm text-muted-foreground hover:bg-muted transition border-t border-border flex items-center gap-3 min-h-[52px]">
+              <X size={16} strokeWidth={2} />Batal
+            </button>
           </div>
         </div>
       )}

@@ -2,13 +2,22 @@
 
 :root {
   --background: #faf8f5;
-  --foreground: #1a1a1a;
+  --foreground: #1a1209;
   --primary: #c8763a;
   --primary-foreground: #ffffff;
+  --secondary: #f5ede3;
+  --secondary-foreground: #7c4a1e;
   --muted: #f0ebe4;
-  --muted-foreground: #6b6560;
-  --border: #e5ddd5;
+  --muted-foreground: #78716c;
+  --border: #e8ddd3;
   --card: #ffffff;
+  --card-foreground: #1a1209;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --ring: #c8763a;
+  --radius: 0.75rem;
 }
 
 @theme inline {
@@ -16,20 +25,60 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-calistoga);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: contain;
 }
 
+/* Eliminate 300ms tap delay on all interactive elements */
+button,
+a,
+[role="button"],
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+/* Ensure no horizontal overflow on mobile */
 * {
   box-sizing: border-box;
+  min-width: 0;
+}
+
+/* Scrollbar hide utility */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Font display class */
+.font-display {
+  font-family: var(--font-calistoga), serif;
 }

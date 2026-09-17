@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { isWithinRadius } from '@/lib/utils/distance'
+import { Coffee, MapPin, EyeOff, UserRound, Loader2 } from 'lucide-react'
 
 interface Shop {
   id: string
@@ -29,6 +30,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
   const [bio, setBio] = useState('')
   const [instagram, setInstagram] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('')
   const [joinError, setJoinError] = useState<string | null>(null)
   const [existingUserId, setExistingUserId] = useState<string | null>(null)
 
@@ -191,6 +193,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
       user_id: uid,
       display_name: name,
       is_anonymous: mode === 'anonymous',
+      gender: gender || 'prefer_not_to_say',
       chat_enabled: true,
       ...(mode === 'full' && {
         age: age ? parseInt(age) : null,
@@ -203,21 +206,22 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
     await joinSession(uid)
   }
 
-  // Checking state — blank/spinner sementara cek session
   if (step === 'checking') {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center px-4">
-        <div className="text-4xl animate-pulse">☕</div>
+      <main className="flex min-h-dvh flex-col items-center justify-center px-4">
+        <Coffee size={36} strokeWidth={1.5} className="text-primary animate-pulse" />
       </main>
     )
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-4">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-4">☕</div>
-          <h1 className="text-2xl font-bold mb-1">{shop.name}</h1>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#fdf0e6' }}>
+            <Coffee size={32} strokeWidth={1.75} style={{ color: '#c8763a' }} />
+          </div>
+          <h1 className="font-display text-2xl font-bold mb-1" style={{ color: '#c8763a' }}>{shop.name}</h1>
           <p className="text-sm text-muted-foreground">{shop.address}</p>
         </div>
 
@@ -228,7 +232,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
             </p>
             <button
               onClick={() => setStep('gps')}
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition"
+              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition min-h-[48px]"
             >
               Gabung Sekarang
             </button>
@@ -239,15 +243,16 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
           <div className="space-y-4">
             {existingUserId && displayName && (
               <div className="bg-muted rounded-xl px-4 py-3 text-sm text-center text-muted-foreground">
-                Selamat datang lagi, <strong>{displayName}</strong> 👋
+                Selamat datang lagi, <strong>{displayName}</strong>
               </div>
             )}
-            <div className="bg-muted rounded-xl p-4 text-center text-sm text-muted-foreground">
-              Kami perlu verifikasi bahwa kamu berada di <strong>{shop.name}</strong>.
+            <div className="bg-muted rounded-xl p-4 flex items-start gap-3 text-sm text-muted-foreground">
+              <MapPin size={16} strokeWidth={2} className="shrink-0 mt-0.5 text-primary" />
+              <span>Kami perlu verifikasi bahwa kamu berada di <strong>{shop.name}</strong>.</span>
             </div>
             <button
               onClick={handleGPSVerify}
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition"
+              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition min-h-[48px]"
             >
               Verifikasi Lokasi
             </button>
@@ -256,19 +261,19 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
 
         {step === 'verifying' && (
           <div className="text-center space-y-3">
-            <div className="text-3xl animate-pulse">📍</div>
+            <Loader2 size={32} strokeWidth={2} className="animate-spin text-primary mx-auto" />
             <p className="text-muted-foreground text-sm">Mengecek lokasi kamu...</p>
           </div>
         )}
 
         {step === 'failed' && (
           <div className="space-y-4">
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center text-sm text-red-600">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600">
               {gpsError}
             </div>
             <button
               onClick={() => setStep('gps')}
-              className="w-full py-3 rounded-xl border border-border font-semibold hover:bg-muted transition"
+              className="w-full py-3 rounded-xl border border-border font-semibold hover:bg-muted transition min-h-[48px]"
             >
               Coba Lagi
             </button>
@@ -290,33 +295,57 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
               maxLength={30}
               required
               autoFocus
-              className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition min-h-[48px]"
             />
 
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setMode('anonymous')}
-                className={`py-3 rounded-xl border text-sm font-semibold transition ${
+                className={`py-3 rounded-xl border text-sm font-semibold transition flex items-center justify-center gap-2 min-h-[48px] ${
                   mode === 'anonymous' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
                 }`}
               >
-                🕵️ Anonim
+                <EyeOff size={15} strokeWidth={2} />
+                Anonim
               </button>
               <button
                 type="button"
                 onClick={() => setMode('full')}
-                className={`py-3 rounded-xl border text-sm font-semibold transition ${
+                className={`py-3 rounded-xl border text-sm font-semibold transition flex items-center justify-center gap-2 min-h-[48px] ${
                   mode === 'full' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
                 }`}
               >
-                😊 Tampil Lengkap
+                <UserRound size={15} strokeWidth={2} />
+                Profil Lengkap
               </button>
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
               {mode === 'anonymous' ? 'Hanya nama yang terlihat oleh orang lain' : 'Nama, usia, bio, dan sosmed kamu terlihat'}
             </p>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground text-center mb-2">Jenis kelamin kamu?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { value: 'female', label: 'Cewek' },
+                  { value: 'male', label: 'Cowok' },
+                  { value: 'other', label: 'Lainnya' },
+                ] as const).map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setGender(value)}
+                    className={`py-2.5 rounded-xl border text-sm font-semibold transition ${
+                      gender === value ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {mode === 'full' && (
               <div className="space-y-3 border border-border rounded-xl p-4">
@@ -359,7 +388,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
 
             <button
               type="submit"
-              disabled={!displayName.trim()}
+              disabled={!displayName.trim() || !gender}
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition disabled:opacity-40"
             >
               Masuk ke People Here
@@ -369,7 +398,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
 
         {step === 'joining' && (
           <div className="text-center space-y-3">
-            <div className="text-3xl animate-pulse">✨</div>
+            <Loader2 size={32} strokeWidth={2} className="animate-spin text-primary mx-auto" />
             <p className="text-muted-foreground text-sm">Sedang masuk...</p>
           </div>
         )}

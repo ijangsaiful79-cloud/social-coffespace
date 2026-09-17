@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Calistoga } from "next/font/google";
 import "./globals.css";
 import NotificationSoundListener from "@/components/NotificationSoundListener";
 
@@ -10,13 +10,22 @@ const geist = Geist({
   preload: true,
 });
 
+const calistoga = Calistoga({
+  variable: "--font-calistoga",
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Coffee Dating — Meet People at Your Coffee Shop",
+  title: "Social Coffé — Meet People at Your Coffee Shop",
   description: "Connect with people sharing your coffee moment.",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Coffee Dating",
+    title: "Social Coffé",
+    startupImage: "/apple-icon.png",
   },
 };
 
@@ -34,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" className={`${geist.variable} h-full`}>
+    <html lang="id" className={`${geist.variable} ${calistoga.variable} h-full`}>
       <body className="min-h-full bg-background text-foreground antialiased">
         <NotificationSoundListener />
         {children}
