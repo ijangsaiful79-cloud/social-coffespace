@@ -278,14 +278,14 @@ function PeopleHereList() {
     setAvatarUploading(true)
     if (avatarInputRef.current) avatarInputRef.current.value = ''
 
-    // Convert to JPEG via Canvas (handles HEIC, PNG, WebP, etc.)
+    // Compress: resize to max 600px, export JPEG — handles HEIC/PNG/WebP too
     let blob: Blob
     try {
       blob = await new Promise<Blob>((resolve, reject) => {
         const img = new Image()
         const url = URL.createObjectURL(file)
         img.onload = () => {
-          const MAX = 1080
+          const MAX = 600
           let { width, height } = img
           if (width > MAX || height > MAX) {
             if (width >= height) { height = Math.round(height * MAX / width); width = MAX }
@@ -296,7 +296,16 @@ function PeopleHereList() {
           const ctx = canvas.getContext('2d')!
           ctx.drawImage(img, 0, 0, width, height)
           URL.revokeObjectURL(url)
-          canvas.toBlob((b) => b ? resolve(b) : reject(new Error('canvas failed')), 'image/jpeg', 0.88)
+          // First pass at 0.82
+          canvas.toBlob((b1) => {
+            if (!b1) { reject(new Error('canvas failed')); return }
+            // Second pass if still > 150KB — reduce to 0.65
+            if (b1.size > 150 * 1024) {
+              canvas.toBlob((b2) => b2 ? resolve(b2) : resolve(b1), 'image/jpeg', 0.65)
+            } else {
+              resolve(b1)
+            }
+          }, 'image/jpeg', 0.82)
         }
         img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('load failed')) }
         img.src = url
