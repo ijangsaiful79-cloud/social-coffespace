@@ -273,22 +273,50 @@ function PeopleHereList() {
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !currentUserId) return
-    if (file.size > 2 * 1024 * 1024) { showToast('Foto terlalu besar. Maksimal 2MB.'); return }
+    // 10 MB raw limit — canvas will compress it down
+    if (file.size > 10 * 1024 * 1024) { showToast('Foto terlalu besar. Maksimal 10MB.'); return }
     setAvatarUploading(true)
+    if (avatarInputRef.current) avatarInputRef.current.value = ''
+
+    // Convert to JPEG via Canvas (handles HEIC, PNG, WebP, etc.)
+    let blob: Blob
+    try {
+      blob = await new Promise<Blob>((resolve, reject) => {
+        const img = new Image()
+        const url = URL.createObjectURL(file)
+        img.onload = () => {
+          const MAX = 1080
+          let { width, height } = img
+          if (width > MAX || height > MAX) {
+            if (width >= height) { height = Math.round(height * MAX / width); width = MAX }
+            else { width = Math.round(width * MAX / height); height = MAX }
+          }
+          const canvas = document.createElement('canvas')
+          canvas.width = width; canvas.height = height
+          const ctx = canvas.getContext('2d')!
+          ctx.drawImage(img, 0, 0, width, height)
+          URL.revokeObjectURL(url)
+          canvas.toBlob((b) => b ? resolve(b) : reject(new Error('canvas failed')), 'image/jpeg', 0.88)
+        }
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('load failed')) }
+        img.src = url
+      })
+    } catch {
+      showToast('Gagal memproses foto. Coba foto lain.'); setAvatarUploading(false); return
+    }
+
     const supabase = createClient()
-    const ext = file.name.split('.').pop() ?? 'jpg'
-    const path = `${currentUserId}/avatar.${ext}`
+    const path = `${currentUserId}/avatar.jpg`
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(path, file, { upsert: true, contentType: file.type })
-    if (uploadError) { showToast('Gagal upload foto. Pastikan bucket avatars sudah dibuat.'); setAvatarUploading(false); return }
+      .upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
+    if (uploadError) { showToast('Gagal upload foto. Coba lagi.'); setAvatarUploading(false); return }
     const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
     const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
     await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('user_id', currentUserId)
     setMyProfile((prev) => prev ? { ...prev, avatar_url: publicUrl } : prev)
     setAvatarUploading(false)
     showToast('Foto profil diperbarui!')
-    if (avatarInputRef.current) avatarInputRef.current.value = ''
   }
 
   async function fetchPeople(uid: string, supabase: ReturnType<typeof createClient>) {
@@ -827,13 +855,13 @@ function PeopleHereList() {
             <h2 className="font-bold text-lg mb-1">Edit Profil</h2>
             <p className="text-sm text-muted-foreground mb-4">Ubah nama dan informasi kamu</p>
 
-            {/* Avatar upload */}
+            {/* Avatar upload — use opacity-0 not display:none so iOS Safari can trigger it */}
             <input
               ref={avatarInputRef}
               type="file"
-              accept="image/*"
-              className="hidden"
+              accept="image/*,image/heic,image/heif"
               onChange={handleAvatarUpload}
+              style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none' }}
             />
             <div className="flex flex-col items-center mb-5">
               <button
