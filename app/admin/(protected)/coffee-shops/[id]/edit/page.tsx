@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
+import LocationPicker from '@/components/admin/LocationPicker'
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -11,8 +12,8 @@ export default function EditCoffeeShopPage({ params }: Props) {
 
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
-  const [latitude, setLatitude] = useState('')
-  const [longitude, setLongitude] = useState('')
+  const [lat, setLat] = useState<number | null>(null)
+  const [lng, setLng] = useState<number | null>(null)
   const [radius, setRadius] = useState('100')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -24,8 +25,8 @@ export default function EditCoffeeShopPage({ params }: Props) {
       .then((shop) => {
         setName(shop.name)
         setAddress(shop.address)
-        setLatitude(String(shop.latitude))
-        setLongitude(String(shop.longitude))
+        setLat(shop.latitude)
+        setLng(shop.longitude)
         setRadius(String(shop.radius_meter))
         setLoading(false)
       })
@@ -33,6 +34,7 @@ export default function EditCoffeeShopPage({ params }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!lat || !lng) { setError('Pilih lokasi terlebih dahulu.'); return }
     setSaving(true)
     setError(null)
 
@@ -42,8 +44,8 @@ export default function EditCoffeeShopPage({ params }: Props) {
       body: JSON.stringify({
         name: name.trim(),
         address: address.trim(),
-        latitude: parseFloat(latitude),
-        longitude: parseFloat(longitude),
+        latitude: lat,
+        longitude: lng,
         radius_meter: parseInt(radius),
       }),
     })
@@ -59,7 +61,7 @@ export default function EditCoffeeShopPage({ params }: Props) {
     router.refresh()
   }
 
-  if (loading) return <div className="text-muted-foreground text-sm animate-pulse">Loading...</div>
+  if (loading) return <div className="text-muted-foreground text-sm animate-pulse">Memuat...</div>
 
   return (
     <div className="max-w-lg">
@@ -78,23 +80,17 @@ export default function EditCoffeeShopPage({ params }: Props) {
             className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Latitude <span className="text-red-400">*</span></label>
-            <input type="number" required step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Longitude <span className="text-red-400">*</span></label>
-            <input type="number" required step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
-          </div>
-        </div>
+        <LocationPicker
+          lat={lat}
+          lng={lng}
+          onChange={(newLat, newLng) => { setLat(newLat); setLng(newLng) }}
+        />
 
         <div>
-          <label className="block text-sm font-medium mb-1">Radius (meter)</label>
+          <label className="block text-sm font-medium mb-1">Radius GPS (meter)</label>
           <input type="number" required min={50} max={500} value={radius} onChange={(e) => setRadius(e.target.value)}
             className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+          <p className="text-xs text-muted-foreground mt-1">Jarak maksimal dari coffee shop agar pengguna bisa check-in (50–500m)</p>
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
@@ -104,7 +100,7 @@ export default function EditCoffeeShopPage({ params }: Props) {
             className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">
             Batal
           </button>
-          <button type="submit" disabled={saving}
+          <button type="submit" disabled={saving || !lat || !lng}
             className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-60">
             {saving ? 'Menyimpan...' : 'Simpan'}
           </button>
