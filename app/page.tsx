@@ -64,26 +64,12 @@ export default async function LandingPage() {
               Social Coffé
             </span>
           </div>
-          <a href="#partner" style={{ fontSize: 13, fontWeight: 500, color: C.muted, textDecoration: 'none' }}>
-            Untuk coffee shop
-          </a>
         </div>
       </nav>
 
       {/* Hero */}
       <section style={{ background: C.parchment }}>
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '96px 20px 104px', textAlign: 'center' }}>
-
-          {/* Tagline chip */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: C.roseLight, border: `1px solid ${C.tan}`,
-            borderRadius: 99, padding: '5px 14px', marginBottom: 28,
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.rose }}>
-              More People. More Stories.
-            </span>
-          </div>
 
           <div style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 'clamp(2.4rem, 6vw, 3.8rem)', lineHeight: 1.15, color: C.espresso, marginBottom: 6 }}>
             Kenalan di coffee shop.
@@ -280,19 +266,50 @@ export default async function LandingPage() {
 
       {/* Footer */}
       <footer style={{ borderTop: `1px solid ${C.tan}`, background: C.parchmentDk }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 24, height: 24, borderRadius: 8, background: C.rose, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Coffee size={12} strokeWidth={2} color={C.white} />
+        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 20px 36px' }}>
+
+          {/* Top row */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 32, marginBottom: 40 }}>
+
+            {/* Brand */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 11, background: C.rose, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 2px 8px rgba(197,122,110,0.28)` }}>
+                  <Coffee size={16} strokeWidth={2} color={C.white} />
+                </div>
+                <span style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 18, fontWeight: 700, color: C.espresso }}>
+                  Social Coffé
+                </span>
+              </div>
+              <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, maxWidth: 220 }}>
+                Good Coffee.<br />Better Connection.
+              </p>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.rose }}>Social Coffé</span>
+
+            {/* Links */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
+              <a
+                href="mailto:inovasoftsolution@gmail.com?subject=Daftar%20Coffee%20Shop%20Social%20Coff%C3%A9"
+                style={{ fontSize: 13, color: C.espresso, textDecoration: 'none', fontWeight: 500 }}
+              >
+                Daftarkan coffee shop kamu →
+              </a>
+              <a href="#lokasi" style={{ fontSize: 13, color: C.muted, textDecoration: 'none' }}>
+                Lihat lokasi partner
+              </a>
+            </div>
           </div>
-          <p style={{ fontSize: 12, color: C.muted }}>
-            Terhubung, offline, bermakna. &copy; {new Date().getFullYear()}
-          </p>
-          <Link href="/admin/login" style={{ fontSize: 12, color: C.muted, textDecoration: 'none' }}>
-            Admin
-          </Link>
+
+          {/* Bottom row */}
+          <div style={{ borderTop: `1px solid ${C.tan}`, paddingTop: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <p style={{ fontSize: 11, color: C.muted }}>
+              &copy; {new Date().getFullYear()} Social Coffé
+            </p>
+            <Link href="/admin/login" style={{ fontSize: 11, color: C.tan, textDecoration: 'none' }}>
+              admin
+            </Link>
+          </div>
+
         </div>
       </footer>
     </div>
