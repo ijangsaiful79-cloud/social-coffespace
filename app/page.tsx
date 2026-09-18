@@ -60,18 +60,6 @@ export default async function LandingPage() {
       <section style={{ background: '#ffffff' }}>
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '96px 20px 104px', textAlign: 'center' }}>
 
-          {shops.length > 0 && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              background: '#fff7ed', border: '1px solid #fed7aa',
-              borderRadius: 100, padding: '6px 14px',
-              fontSize: 12, fontWeight: 600, color: '#c06c2e',
-              marginBottom: 32,
-            }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', flexShrink: 0 }} />
-              {shops.length} coffee shop aktif
-            </div>
-          )}
 
           <div style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 'clamp(2.4rem, 6vw, 3.8rem)', lineHeight: 1.15, color: '#1c1917', marginBottom: 6 }}>
             Kenalan di coffee shop.
