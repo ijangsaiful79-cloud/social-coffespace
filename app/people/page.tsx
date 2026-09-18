@@ -157,6 +157,7 @@ function PeopleHereList() {
   const [reportDesc, setReportDesc] = useState('')
   const [blockConfirm, setBlockConfirm] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [profilePreview, setProfilePreview] = useState<PersonHere | null>(null)
   const [blockListOpen, setBlockListOpen] = useState(false)
   const [blockedUsers, setBlockedUsers] = useState<Profile[]>([])
   const [blockListLoading, setBlockListLoading] = useState(false)
@@ -657,24 +658,20 @@ function PeopleHereList() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <p className={`font-semibold truncate ${isAnon ? 'text-muted-foreground' : 'text-foreground'}`}>{person.display_name}</p>
-                          {!isAnon && person.gender && GENDER_LABEL[person.gender] && (
-                            <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{GENDER_LABEL[person.gender]}</span>
-                          )}
                           {isAnon
                             ? <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md font-medium">anonim</span>
                             : <span className="text-xs text-primary bg-secondary px-1.5 py-0.5 rounded-md font-medium border border-border">profil lengkap</span>
                           }
                         </div>
-                        {!isAnon
-                          ? <p className="text-sm text-muted-foreground truncate mt-0.5">{[person.age ? `${person.age} yo` : '', person.bio].filter(Boolean).join(' · ')}</p>
-                          : <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><EyeOff size={11} strokeWidth={2} />Identitas disembunyikan</p>
+                        {isAnon
+                          ? <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><EyeOff size={11} strokeWidth={2} />Identitas disembunyikan</p>
+                          : <button
+                              onClick={() => setProfilePreview(person)}
+                              className="mt-1.5 text-xs font-semibold text-primary border border-primary/30 bg-secondary px-2.5 py-1 rounded-lg hover:bg-primary/10 transition"
+                            >
+                              Lihat Profil
+                            </button>
                         }
-                        {!isAnon && (person.instagram || person.whatsapp) && (
-                          <div className="flex items-center gap-1.5 mt-1">
-                            {person.instagram && <span className="flex items-center gap-1 text-xs text-pink-600 bg-pink-50 px-1.5 py-0.5 rounded-md border border-pink-100"><span className="text-[10px] font-bold">IG</span></span>}
-                            {person.whatsapp && <span className="flex items-center gap-1 text-xs text-green-700 bg-green-50 px-1.5 py-0.5 rounded-md border border-green-100"><Phone size={10} strokeWidth={2} />WA</span>}
-                          </div>
-                        )}
                       </div>
                       <div className="shrink-0 flex flex-col items-end gap-2">
                         {person.chat_enabled && (
@@ -1034,6 +1031,86 @@ function PeopleHereList() {
               <button onClick={handleDeleteConversation} disabled={deleteLoading} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-50 min-h-[44px]">
                 {deleteLoading ? 'Menghapus...' : 'Hapus'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Preview */}
+      {profilePreview && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setProfilePreview(null)}>
+          <div className="bg-background rounded-2xl w-full max-w-sm shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Top close handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-border" />
+            </div>
+            <div className="px-6 pt-2 pb-6">
+              {/* Avatar + name */}
+              <div className="flex items-center gap-4 mb-5">
+                <Avatar name={profilePreview.display_name} avatarUrl={profilePreview.avatar_url} isAnonymous={false} size={64} />
+                <div className="min-w-0">
+                  <p className="font-bold text-lg leading-tight truncate">{profilePreview.display_name}</p>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    {profilePreview.gender && GENDER_LABEL[profilePreview.gender] && (
+                      <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{GENDER_LABEL[profilePreview.gender]}</span>
+                    )}
+                    {profilePreview.age && (
+                      <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{profilePreview.age} th</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio */}
+              {profilePreview.bio && (
+                <div className="mb-4 p-3 rounded-xl bg-muted/50 border border-border">
+                  <p className="text-sm text-foreground leading-relaxed">{profilePreview.bio}</p>
+                </div>
+              )}
+
+              {/* Socials */}
+              {(profilePreview.instagram || profilePreview.whatsapp || profilePreview.tiktok) && (
+                <div className="flex flex-col gap-2 mb-5">
+                  {profilePreview.instagram && (
+                    <a href={`https://instagram.com/${profilePreview.instagram.replace('@','')}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-pink-100 bg-pink-50 text-sm font-medium text-pink-700 hover:bg-pink-100 transition">
+                      <span className="text-xs font-bold bg-pink-200 text-pink-800 px-1.5 py-0.5 rounded">IG</span>
+                      @{profilePreview.instagram.replace('@','')}
+                    </a>
+                  )}
+                  {profilePreview.tiktok && (
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-muted/40 text-sm font-medium text-foreground">
+                      <span className="text-xs font-bold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">TT</span>
+                      @{profilePreview.tiktok.replace('@','')}
+                    </div>
+                  )}
+                  {profilePreview.whatsapp && (
+                    <a href={`https://wa.me/${profilePreview.whatsapp.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-green-100 bg-green-50 text-sm font-medium text-green-700 hover:bg-green-100 transition">
+                      <Phone size={14} strokeWidth={2} />
+                      {profilePreview.whatsapp}
+                    </a>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button onClick={() => setProfilePreview(null)}
+                  className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition min-h-[44px]">
+                  Tutup
+                </button>
+                {profilePreview.chat_enabled && (
+                  <button
+                    onClick={() => { setProfilePreview(null); handleSayHi(profilePreview.user_id) }}
+                    disabled={sayingHiTo.has(profilePreview.user_id)}
+                    className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-2"
+                  >
+                    <MessageSquare size={15} strokeWidth={2} />
+                    Say Hi
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
