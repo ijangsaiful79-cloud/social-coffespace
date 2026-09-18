@@ -25,6 +25,12 @@ export default function ThemeSwitcher({ onClose }: Props) {
     setMounted(true)
     const saved = (localStorage.getItem('accent') ?? 'kopi') as AccentKey
     setAccent(saved)
+    // Restore accent to DOM on every mount (survives page refresh)
+    if (saved === 'kopi') {
+      document.documentElement.removeAttribute('data-accent')
+    } else {
+      document.documentElement.setAttribute('data-accent', saved)
+    }
   }, [])
 
   function applyAccent(key: AccentKey) {

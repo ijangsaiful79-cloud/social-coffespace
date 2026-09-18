@@ -1,19 +1,29 @@
 @import "tailwindcss";
 
-/* Accent overrides */
+/* ── Accent: Mawar (Rose) ── */
 [data-accent="rose"] {
-  --primary: #c04868;
+  --background:         #fffbfb;
+  --card:               #ffffff;
+  --muted:              #fdf2f4;
+  --border:             #fce4ea;
+  --primary:            #c04868;
   --primary-foreground: #ffffff;
-  --secondary: #fff1f4;
+  --secondary:          #fff0f3;
   --secondary-foreground: #8b2540;
-  --ring: #c04868;
+  --ring:               #c04868;
 }
+
+/* ── Accent: Sage ── */
 [data-accent="sage"] {
-  --primary: #4a7c6e;
+  --background:         #f9fcfb;
+  --card:               #ffffff;
+  --muted:              #eef6f3;
+  --border:             #daeee8;
+  --primary:            #4a7c6e;
   --primary-foreground: #ffffff;
-  --secondary: #f0faf7;
+  --secondary:          #ecf7f3;
   --secondary-foreground: #2c574c;
-  --ring: #4a7c6e;
+  --ring:               #4a7c6e;
 }
 
 :root {
@@ -119,19 +129,36 @@ textarea {
   --ring: #d4824a;
 }
 
-.dark[data-accent="rose"],
-.dark [data-accent="rose"] {
-  --primary: #d6607e;
-  --ring: #d6607e;
-  --secondary: #2d0f1a;
+/* ── Dark + Mawar ── */
+.dark[data-accent="rose"] {
+  --background:         #140a0e;
+  --foreground:         #fafafa;
+  --card:               #1e1117;
+  --card-foreground:    #fafafa;
+  --muted:              #271319;
+  --muted-foreground:   #a1a1aa;
+  --border:             #3a1c24;
+  --primary:            #d6607e;
+  --primary-foreground: #ffffff;
+  --secondary:          #2d1020;
   --secondary-foreground: #f0a0b5;
+  --ring:               #d6607e;
 }
-.dark[data-accent="sage"],
-.dark [data-accent="sage"] {
-  --primary: #5e9e8e;
-  --ring: #5e9e8e;
-  --secondary: #0d1f1a;
+
+/* ── Dark + Sage ── */
+.dark[data-accent="sage"] {
+  --background:         #08100e;
+  --foreground:         #fafafa;
+  --card:               #0e1a17;
+  --card-foreground:    #fafafa;
+  --muted:              #132119;
+  --muted-foreground:   #a1a1aa;
+  --border:             #1d3028;
+  --primary:            #5e9e8e;
+  --primary-foreground: #ffffff;
+  --secondary:          #0d201b;
   --secondary-foreground: #8ecfc3;
+  --ring:               #5e9e8e;
 }
 
 .auth-bg::before {
