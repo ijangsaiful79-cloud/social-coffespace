@@ -11,7 +11,7 @@ import PushPromptBanner from '@/components/PushPromptBanner'
 import { isWithinRadius } from '@/lib/utils/distance'
 import {
   Users, MessageSquare, LogOut, Pencil, MoreHorizontal, Trash2,
-  Flag, Ban, X, Coffee, EyeOff, Phone, UserRound, Clock, Camera, Palette,
+  Flag, Ban, X, Coffee, EyeOff, Phone, UserRound, Camera, Palette,
 } from 'lucide-react'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 
@@ -134,8 +134,7 @@ function PeopleHereList() {
   const [unreadTotal, setUnreadTotal] = useState(0)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessionExpiresAt, setSessionExpiresAt] = useState<Date | null>(null)
-  const [timeLeft, setTimeLeft] = useState<string>('')
-  const [extendLoading, setExtendLoading] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   // Edit state
@@ -210,8 +209,13 @@ function PeopleHereList() {
         .eq('status', 'active')
         .single()
       if (mySession) {
+        // Auto-renew session to 30 min on every page load/refresh
+        const newExpires = new Date(Date.now() + 30 * 60 * 1000)
+        await supabase.from('coffee_shop_sessions')
+          .update({ expires_at: newExpires.toISOString(), last_active_at: new Date().toISOString() })
+          .eq('id', mySession.id)
         setSessionId(mySession.id)
-        setSessionExpiresAt(new Date(mySession.expires_at))
+        setSessionExpiresAt(newExpires)
       }
 
       await fetchPeople(uid, supabase)
@@ -255,38 +259,15 @@ function PeopleHereList() {
 
   useEffect(() => {
     if (!sessionExpiresAt) return
-    function tick() {
-      const diff = sessionExpiresAt!.getTime() - Date.now()
-      if (diff <= 0) { setTimeLeft('0:00'); return }
-      const mins = Math.floor(diff / 60000)
-      const secs = Math.floor((diff % 60000) / 1000)
-      setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`)
-    }
-    tick()
-    const id = setInterval(tick, 1000)
+    const id = setInterval(() => {
+      if (sessionExpiresAt.getTime() <= Date.now()) {
+        setSessionExpired(true)
+        clearInterval(id)
+      }
+    }, 15_000)
     return () => clearInterval(id)
   }, [sessionExpiresAt])
 
-  async function handleExtendSession() {
-    if (!shopCoords || !sessionId) return
-    setExtendLoading(true)
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const ok = isWithinRadius(pos.coords.latitude, pos.coords.longitude, shopCoords.lat, shopCoords.lng, shopCoords.radius)
-        if (!ok) { showToast('Kamu sudah keluar dari area coffee shop'); setExtendLoading(false); return }
-        const supabase = createClient()
-        const newExpires = new Date(Date.now() + 30 * 60 * 1000)
-        await supabase.from('coffee_shop_sessions')
-          .update({ expires_at: newExpires.toISOString(), last_active_at: new Date().toISOString() })
-          .eq('id', sessionId)
-        setSessionExpiresAt(newExpires)
-        setExtendLoading(false)
-        showToast('Sesi diperpanjang 30 menit!')
-      },
-      () => { showToast('Gagal akses lokasi. Coba lagi.'); setExtendLoading(false) },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
-    )
-  }
 
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -561,24 +542,6 @@ function PeopleHereList() {
               <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
               {shopName}
             </p>
-            {timeLeft && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`flex items-center gap-1 text-xs font-medium tabular-nums ${
-                  sessionExpiresAt && sessionExpiresAt.getTime() - Date.now() < 5 * 60 * 1000
-                    ? 'text-red-500' : 'text-muted-foreground'
-                }`}>
-                  <Clock size={11} strokeWidth={2} />
-                  {timeLeft}
-                </span>
-                <button
-                  onClick={handleExtendSession}
-                  disabled={extendLoading}
-                  className="text-xs font-semibold text-primary hover:underline disabled:opacity-50 transition"
-                >
-                  {extendLoading ? 'Mengecek...' : 'Perpanjang'}
-                </button>
-              </div>
-            )}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={openEdit} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm border border-border hover:bg-muted transition min-h-[44px]">
@@ -1070,6 +1033,35 @@ function PeopleHereList() {
               <button onClick={() => setDeleteConvoId(null)} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition min-h-[44px]">Batal</button>
               <button onClick={handleDeleteConversation} disabled={deleteLoading} className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition disabled:opacity-50 min-h-[44px]">
                 {deleteLoading ? 'Menghapus...' : 'Hapus'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Expired Alert */}
+      {sessionExpired && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] px-4">
+          <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl text-center">
+            <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-4">
+              <Coffee size={26} strokeWidth={1.75} className="text-amber-500" />
+            </div>
+            <h2 className="font-bold text-lg mb-2">Sesi Berakhir</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Sesi kamu di coffee shop ini sudah berakhir. Refresh halaman untuk mulai sesi baru selama 30 menit.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => router.push('/')}
+                className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition"
+              >
+                Keluar
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition"
+              >
+                Refresh Sesi
               </button>
             </div>
           </div>
