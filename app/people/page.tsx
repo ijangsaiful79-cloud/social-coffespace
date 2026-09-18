@@ -467,7 +467,17 @@ function PeopleHereList() {
       if (existing?.id) { router.push(`/chat/${existing.id}`); return }
       const { data: convo, error } = await supabase
         .from('conversations').insert({ user_one_id: currentUserId, user_two_id: receiverId }).select('id').single()
-      if (error || !convo) { showToast('Gagal memulai chat. Coba lagi.'); return }
+      if (error) {
+        // Race condition: another insert won — find the existing conversation
+        const { data: fallback } = await supabase
+          .from('conversations').select('id')
+          .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`)
+          .maybeSingle()
+        if (fallback?.id) { router.push(`/chat/${fallback.id}`); return }
+        showToast('Gagal memulai chat. Coba lagi.')
+        return
+      }
+      if (!convo) { showToast('Gagal memulai chat. Coba lagi.'); return }
       router.push(`/chat/${convo.id}`)
     } catch {
       showToast('Gagal memulai chat. Coba lagi.')
