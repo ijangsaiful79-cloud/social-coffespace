@@ -241,7 +241,11 @@ export default function ChatPage({ params }: Props) {
     setDeleteTargetId(null)
     setMessages((prev) => prev.filter((m) => m.id !== targetId))
     const supabase = createClient()
-    await supabase.from('messages').delete().eq('id', targetId)
+    const { error } = await supabase.from('messages').delete().eq('id', targetId)
+    if (error) {
+      showToast('Gagal hapus pesan. Coba lagi.')
+      setMessages((prev) => prev)
+    }
   }
 
   async function sendMessage(e: React.FormEvent) {
