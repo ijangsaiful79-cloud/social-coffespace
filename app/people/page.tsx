@@ -220,6 +220,10 @@ function PeopleHereList() {
           .eq('id', mySession.id)
         setSessionId(mySession.id)
         setSessionExpiresAt(newExpires)
+      } else {
+        // No active session — redirect back to entry so GPS is re-verified
+        router.replace('/')
+        return
       }
 
       await fetchPeople(uid, supabase)
@@ -298,9 +302,9 @@ function PeopleHereList() {
           canvas.width = width; canvas.height = height
           const ctx = canvas.getContext('2d')!
           ctx.drawImage(img, 0, 0, width, height)
-          URL.revokeObjectURL(url)
-          // First pass at 0.82
+          // First pass at 0.82 — revoke URL inside blob callback after canvas is done
           canvas.toBlob((b1) => {
+            URL.revokeObjectURL(url)
             if (!b1) { reject(new Error('canvas failed')); return }
             // Second pass if still > 150KB — reduce to 0.65
             if (b1.size > 150 * 1024) {
@@ -349,7 +353,7 @@ function PeopleHereList() {
       const sessionMap = Object.fromEntries(filtered.map((s) => [s.user_id, s.id]))
       setPeople(profiles.map((p) => ({ ...(p as unknown as Profile), session_id: sessionMap[p.user_id] })))
     }
-    setLoading(false)
+    setLoading(false) // always runs, even if profiles is null
   }
 
   async function fetchInbox(uid: string, supabase: ReturnType<typeof createClient>) {
@@ -375,7 +379,7 @@ function PeopleHereList() {
 
     const [profilesRes, messagesRes] = await Promise.all([
       supabase.from('profiles').select('*').in('user_id', otherUserIds),
-      supabase.from('messages').select('*').in('conversation_id', convoIds).order('created_at', { ascending: false }),
+      supabase.from('messages').select('*').in('conversation_id', convoIds).order('created_at', { ascending: false }).limit(300),
     ])
 
     const profileMap = Object.fromEntries((profilesRes.data ?? []).map((p) => [p.user_id, p as unknown as Profile]))

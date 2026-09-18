@@ -37,6 +37,7 @@ export function useLocationGuard({ lat, lng, radiusMeter, enabled }: Options) {
           )
           if (within) {
             missesRef.current = 0
+            setIsOutside(false) // recover if GPS was temporarily bad
           } else {
             missesRef.current += 1
             if (missesRef.current >= REQUIRED_MISSES) {

@@ -58,8 +58,8 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
       .single()
 
     if (!profile) {
-      // Has auth but no profile — ask for identity
-      setStep('identity')
+      // Has auth but no profile — must verify GPS first before identity
+      setStep('gps')
       return
     }
 

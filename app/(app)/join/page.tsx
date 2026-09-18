@@ -66,6 +66,7 @@ export default function JoinPage() {
   async function locate(lat: number, lng: number) {
     try {
       const res = await fetch(`/api/locate-shop?lat=${lat}&lng=${lng}`)
+      if (!res.ok) { setStep('error'); return }
       const data = await res.json()
 
       if (data.shop) {

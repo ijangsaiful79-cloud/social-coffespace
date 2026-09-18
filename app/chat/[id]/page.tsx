@@ -55,6 +55,7 @@ function Avatar({ name, avatarUrl, isAnonymous, size = 36 }: { name: string; ava
 
 async function registerPush(userId: string) {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+  if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) return
   const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
   try {
     const reg = await navigator.serviceWorker.register('/sw.js')
@@ -243,12 +244,13 @@ export default function ChatPage({ params }: Props) {
     if (!deleteTargetId) return
     const targetId = deleteTargetId
     setDeleteTargetId(null)
+    const previous = messages
     setMessages((prev) => prev.filter((m) => m.id !== targetId))
     const supabase = createClient()
     const { error } = await supabase.from('messages').delete().eq('id', targetId)
     if (error) {
       showToast('Gagal hapus pesan. Coba lagi.')
-      setMessages((prev) => prev)
+      setMessages(previous)
     }
   }
 

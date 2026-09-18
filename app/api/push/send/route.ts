@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     .from('push_subscriptions')
     .select('subscription')
     .eq('user_id', receiverId)
-    .single()
+    .maybeSingle()
 
   if (!data?.subscription) return NextResponse.json({ ok: false, reason: 'no_subscription' })
 
