@@ -108,6 +108,7 @@ export default function ChatPage({ params }: Props) {
   const [reportReason, setReportReason] = useState('')
   const [reportDesc, setReportDesc] = useState('')
   const [blockConfirm, setBlockConfirm] = useState(false)
+  const [isBlocked, setIsBlocked] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
@@ -168,6 +169,9 @@ export default function ChatPage({ params }: Props) {
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('user_id', otherUid).single()
     if (profile) setOtherUser(profile as unknown as Profile)
+
+    const { data: blockRow } = await supabase.from('blocks').select('id').eq('user_id', uid).eq('blocked_user_id', otherUid).maybeSingle()
+    if (blockRow) setIsBlocked(true)
 
     const { data: msgs } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true })
     if (msgs) setMessages(msgs)
@@ -401,23 +405,30 @@ export default function ChatPage({ params }: Props) {
       </div>
 
       {/* Input */}
-      <form onSubmit={sendMessage} className="flex items-center gap-2 px-4 py-3 border-t border-border bg-card shrink-0">
-        <input
-          ref={inputRef}
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Ketik pesan..."
-          className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
-        />
-        <button
-          type="submit"
-          disabled={!text.trim() || sending}
-          className="w-11 h-11 rounded-xl flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40 shrink-0"
-        >
-          <Send size={16} strokeWidth={2} className={sending ? 'opacity-50' : ''} />
-        </button>
-      </form>
+      {isBlocked ? (
+        <div className="px-4 py-4 border-t border-border bg-card shrink-0 flex items-center justify-center gap-2">
+          <Ban size={14} strokeWidth={2} className="text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Kamu telah memblokir pengguna ini</p>
+        </div>
+      ) : (
+        <form onSubmit={sendMessage} className="flex items-center gap-2 px-4 py-3 border-t border-border bg-card shrink-0">
+          <input
+            ref={inputRef}
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Ketik pesan..."
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+          />
+          <button
+            type="submit"
+            disabled={!text.trim() || sending}
+            className="w-11 h-11 rounded-xl flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40 shrink-0"
+          >
+            <Send size={16} strokeWidth={2} className={sending ? 'opacity-50' : ''} />
+          </button>
+        </form>
+      )}
 
       {/* Action Sheet */}
       {menuOpen && !reportOpen && !blockConfirm && (

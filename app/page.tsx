@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
 import MapWrapper from '@/components/landing/MapWrapper'
+
+export const revalidate = 60 // re-fetch coffee shops from DB every 60 seconds
 import type { ShopPin } from '@/components/landing/CoffeeMap'
 import { Coffee, Shield, EyeOff, Zap, MessageCircle, Bell, UserX, Mail } from 'lucide-react'
 

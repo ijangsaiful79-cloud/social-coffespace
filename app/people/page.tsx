@@ -158,6 +158,9 @@ function PeopleHereList() {
   const [reportDesc, setReportDesc] = useState('')
   const [blockConfirm, setBlockConfirm] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [blockListOpen, setBlockListOpen] = useState(false)
+  const [blockedUsers, setBlockedUsers] = useState<Profile[]>([])
+  const [blockListLoading, setBlockListLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [exitConfirm, setExitConfirm] = useState(false)
   const [deleteConvoId, setDeleteConvoId] = useState<string | null>(null)
@@ -336,8 +339,17 @@ function PeopleHereList() {
 
     if (!convos || convos.length === 0) { setInbox([]); setUnreadTotal(0); setInboxLoading(false); return }
 
-    const otherUserIds = convos.map((c) => c.user_one_id === uid ? c.user_two_id : c.user_one_id)
-    const convoIds = convos.map((c) => c.id)
+    const { data: myBlocks } = await supabase.from('blocks').select('blocked_user_id').eq('user_id', uid)
+    const blockedIds = new Set((myBlocks ?? []).map((b: { blocked_user_id: string }) => b.blocked_user_id))
+
+    const visibleConvos = convos.filter((c) => {
+      const otherUid = c.user_one_id === uid ? c.user_two_id : c.user_one_id
+      return !blockedIds.has(otherUid)
+    })
+    if (visibleConvos.length === 0) { setInbox([]); setUnreadTotal(0); setInboxLoading(false); return }
+
+    const otherUserIds = visibleConvos.map((c) => c.user_one_id === uid ? c.user_two_id : c.user_one_id)
+    const convoIds = visibleConvos.map((c) => c.id)
 
     const [profilesRes, messagesRes] = await Promise.all([
       supabase.from('profiles').select('*').in('user_id', otherUserIds),
@@ -347,7 +359,7 @@ function PeopleHereList() {
     const profileMap = Object.fromEntries((profilesRes.data ?? []).map((p) => [p.user_id, p as unknown as Profile]))
     const allMessages = (messagesRes.data ?? []) as Message[]
 
-    const items: ConversationItem[] = convos.map((convo) => {
+    const items: ConversationItem[] = visibleConvos.map((convo) => {
       const otherUid = convo.user_one_id === uid ? convo.user_two_id : convo.user_one_id
       const convoMessages = allMessages.filter((m) => m.conversation_id === convo.id)
       const lastMessage = convoMessages[0] ?? null
@@ -471,8 +483,33 @@ function PeopleHereList() {
     const supabase = createClient()
     await supabase.from('blocks').insert({ user_id: currentUserId, blocked_user_id: menuTarget.user_id })
     setPeople((prev) => prev.filter((p) => p.user_id !== menuTarget.user_id))
+    setInbox((prev) => {
+      const updated = prev.filter((i) => i.otherUser?.user_id !== menuTarget.user_id)
+      setUnreadTotal(updated.reduce((sum, i) => sum + i.unreadCount, 0))
+      return updated
+    })
     setBlockConfirm(false); setMenuTarget(null); setActionLoading(false)
     showToast('Pengguna telah diblokir')
+  }
+
+  async function fetchBlockedUsers() {
+    if (!currentUserId) return
+    setBlockListLoading(true)
+    const supabase = createClient()
+    const { data: blocks } = await supabase.from('blocks').select('blocked_user_id').eq('user_id', currentUserId)
+    if (!blocks || blocks.length === 0) { setBlockedUsers([]); setBlockListLoading(false); return }
+    const ids = blocks.map((b: { blocked_user_id: string }) => b.blocked_user_id)
+    const { data: profiles } = await supabase.from('profiles').select('*').in('user_id', ids)
+    setBlockedUsers((profiles ?? []) as unknown as Profile[])
+    setBlockListLoading(false)
+  }
+
+  async function handleUnblock(targetUserId: string) {
+    if (!currentUserId) return
+    const supabase = createClient()
+    await supabase.from('blocks').delete().eq('user_id', currentUserId).eq('blocked_user_id', targetUserId)
+    setBlockedUsers((prev) => prev.filter((u) => u.user_id !== targetUserId))
+    showToast('Pengguna berhasil di-unblock')
   }
 
   async function handleReport(e: React.FormEvent) {
@@ -958,6 +995,13 @@ function PeopleHereList() {
                 </button>
               </div>
             </form>
+            <button
+              type="button"
+              onClick={() => { setEditOpen(false); fetchBlockedUsers(); setBlockListOpen(true) }}
+              className="w-full mt-3 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition flex items-center justify-center gap-2"
+            >
+              <Ban size={14} strokeWidth={2} />Daftar Blokir
+            </button>
           </div>
         </div>
       )}
@@ -1028,6 +1072,47 @@ function PeopleHereList() {
                 {deleteLoading ? 'Menghapus...' : 'Hapus'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Block List */}
+      {blockListOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setBlockListOpen(false)}>
+          <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg">Daftar Blokir</h2>
+              <button onClick={() => setBlockListOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted transition">
+                <X size={16} strokeWidth={2} />
+              </button>
+            </div>
+            {blockListLoading ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Memuat...</p>
+            ) : blockedUsers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                  <Ban size={20} strokeWidth={1.75} className="text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">Belum ada pengguna yang diblokir</p>
+              </div>
+            ) : (
+              <div className="overflow-y-auto space-y-2">
+                {blockedUsers.map((user) => (
+                  <div key={user.user_id} className="flex items-center justify-between p-3 rounded-xl border border-border">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={user.display_name} avatarUrl={user.avatar_url} isAnonymous={user.is_anonymous} size={36} />
+                      <span className="text-sm font-medium">{user.display_name}</span>
+                    </div>
+                    <button
+                      onClick={() => handleUnblock(user.user_id)}
+                      className="text-xs font-semibold text-primary border border-primary/30 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition"
+                    >
+                      Buka Blokir
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
