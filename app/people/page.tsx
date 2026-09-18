@@ -615,13 +615,10 @@ function PeopleHereList() {
                   <p className="text-xs text-muted-foreground mt-0.5">by Social Coffé</p>
                 </>
               ) : (
-                <>
-                  <h1 className="font-display text-2xl font-bold tracking-wide text-primary">Social Coffé</h1>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                    <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
-                    {shopName}
-                  </p>
-                </>
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
+                  {shopName}
+                </p>
               )}
             </div>
           </div>
