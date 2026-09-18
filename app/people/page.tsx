@@ -603,8 +603,9 @@ function PeopleHereList() {
                 <Image src={shopLogo} alt={shopName} width={40} height={40} className="object-cover w-full h-full" />
               </div>
             ) : (
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Coffee size={18} strokeWidth={2} className="text-primary" />
+              <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[#F7EEE1]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo-social.png" alt="Social Coffé" className="w-full h-full object-contain mix-blend-multiply" />
               </div>
             )}
             <div>

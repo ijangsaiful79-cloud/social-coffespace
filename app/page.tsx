@@ -56,13 +56,13 @@ export default async function LandingPage() {
         borderBottom: `1px solid ${C.tan}`,
       }}>
         <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 20px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 10, background: C.rose, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 2px 6px rgba(197,122,110,0.35)` }}>
-              <Coffee size={15} strokeWidth={2} color={C.white} />
-            </div>
-            <span style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 16, fontWeight: 700, color: C.rose }}>
-              Social Coffé
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-social.png"
+              alt="Social Coffé"
+              style={{ height: 40, width: 'auto', mixBlendMode: 'multiply' }}
+            />
           </div>
         </div>
       </nav>
@@ -274,13 +274,13 @@ export default async function LandingPage() {
 
             {/* Brand */}
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 11, background: C.rose, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 2px 8px rgba(197,122,110,0.28)` }}>
-                  <Coffee size={16} strokeWidth={2} color={C.white} />
-                </div>
-                <span style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 18, fontWeight: 700, color: C.espresso }}>
-                  Social Coffé
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/logo-social.png"
+                  alt="Social Coffé"
+                  style={{ height: 52, width: 'auto', mixBlendMode: 'multiply' }}
+                />
               </div>
               <p style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, maxWidth: 220 }}>
                 Good Coffee.<br />Better Connection.
