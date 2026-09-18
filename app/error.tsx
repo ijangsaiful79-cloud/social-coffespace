@@ -18,8 +18,8 @@ export default function GlobalError({
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="text-center max-w-sm">
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-          style={{ background: 'linear-gradient(135deg, #fdf0e6, #f5e0cc)' }}>
-          <Coffee size={26} strokeWidth={1.75} style={{ color: '#c06c2e' }} />
+          style={{ background: '#c06c2e', boxShadow: '0 4px 16px 0 rgba(192, 108, 46, 0.25)' }}>
+          <Coffee size={24} strokeWidth={2} color="white" />
         </div>
         <h2 className="text-lg font-semibold mb-2">Ups, ada yang salah</h2>
         <p className="text-sm text-muted-foreground mb-6">Coba lagi atau refresh halaman.</p>

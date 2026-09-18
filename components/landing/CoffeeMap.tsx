@@ -64,7 +64,7 @@ export default function CoffeeMap({ shops }: { shops: ShopPin[] }) {
           .bindPopup(
             `<div style="font-family:system-ui,sans-serif;min-width:160px;">
               <p style="font-weight:700;font-size:14px;margin:0 0 4px;">${shop.name}</p>
-              <p style="color:#8a7468;font-size:12px;margin:0;">${shop.address}</p>
+              <p style="color:#71717a;font-size:12px;margin:0;">${shop.address}</p>
             </div>`,
             { closeButton: false, maxWidth: 220 }
           )

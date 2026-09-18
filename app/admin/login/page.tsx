@@ -40,8 +40,8 @@ export default function AdminLoginPage() {
         <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
           <div className="text-center mb-8">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-              style={{ background: 'linear-gradient(135deg, #fdf0e6, #f5e0cc)' }}>
-              <Coffee size={22} strokeWidth={1.75} style={{ color: '#c06c2e' }} />
+              style={{ background: '#c06c2e' }}>
+              <Coffee size={20} strokeWidth={2} color="white" />
             </div>
             <h1 className="text-lg font-bold">Super Admin</h1>
             <p className="text-sm text-muted-foreground mt-0.5">Coffee Dating Management</p>

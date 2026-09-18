@@ -47,11 +47,11 @@ function RegisterForm() {
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
             style={{
-              background: 'linear-gradient(135deg, #fdf0e6, #f5e0cc)',
-              boxShadow: '0 4px 14px 0 rgba(192, 108, 46, 0.18)',
+              background: '#c06c2e',
+              boxShadow: '0 4px 16px 0 rgba(192, 108, 46, 0.25)',
             }}
           >
-            <Coffee size={30} strokeWidth={1.75} style={{ color: '#c06c2e' }} />
+            <Coffee size={28} strokeWidth={2} color="white" />
           </div>
           <h1 className="font-display text-2xl mb-1">Buat akun baru</h1>
           <p className="text-sm text-muted-foreground">Bergabung dengan Social Coffé</p>

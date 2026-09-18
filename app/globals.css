@@ -1,33 +1,33 @@
 @import "tailwindcss";
 
-/* ─── Accent overrides (light) ─── */
+/* Accent overrides */
 [data-accent="rose"] {
   --primary: #c04868;
   --primary-foreground: #ffffff;
-  --secondary: #fce8ef;
+  --secondary: #fff1f4;
   --secondary-foreground: #8b2540;
   --ring: #c04868;
 }
 [data-accent="sage"] {
   --primary: #4a7c6e;
   --primary-foreground: #ffffff;
-  --secondary: #e4f0ed;
+  --secondary: #f0faf7;
   --secondary-foreground: #2c574c;
   --ring: #4a7c6e;
 }
 
 :root {
-  --background: #fef9f6;
-  --foreground: #1c110a;
+  --background: #ffffff;
+  --foreground: #1c1917;
   --primary: #c06c2e;
   --primary-foreground: #ffffff;
-  --secondary: #f5ede3;
-  --secondary-foreground: #7c4a1e;
-  --muted: #f0ebe3;
-  --muted-foreground: #8a7468;
-  --border: #e4d4c6;
+  --secondary: #fff7ed;
+  --secondary-foreground: #9a3412;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --border: #e4e4e7;
   --card: #ffffff;
-  --card-foreground: #1c110a;
+  --card-foreground: #1c1917;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
   --success: #16a34a;
@@ -35,12 +35,11 @@
   --ring: #c06c2e;
   --radius: 0.875rem;
 
-  /* Shadow scale */
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-sm: 0 1px 4px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-  --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
-  --shadow-lg: 0 10px 24px 0 rgb(0 0 0 / 0.10), 0 4px 8px -4px rgb(0 0 0 / 0.04);
-  --shadow-xl: 0 20px 40px 0 rgb(0 0 0 / 0.12), 0 8px 16px -8px rgb(0 0 0 / 0.06);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.09), 0 8px 10px -6px rgb(0 0 0 / 0.04);
 }
 
 @theme inline {
@@ -76,7 +75,6 @@ body {
   overscroll-behavior-y: contain;
 }
 
-/* Eliminate 300ms tap delay on all interactive elements */
 button,
 a,
 [role="button"],
@@ -86,13 +84,11 @@ textarea {
   touch-action: manipulation;
 }
 
-/* Ensure no horizontal overflow on mobile */
 * {
   box-sizing: border-box;
   min-width: 0;
 }
 
-/* Scrollbar hide utility */
 .scrollbar-none {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -101,51 +97,48 @@ textarea {
   display: none;
 }
 
-/* Font display class */
 .font-display {
   font-family: var(--font-calistoga), serif;
 }
 
-/* ─── Dark mode ─── */
+/* Dark mode */
 .dark {
-  --background: #18100a;
-  --foreground: #f5ede3;
+  --background: #0f0f10;
+  --foreground: #fafafa;
   --primary: #d4824a;
   --primary-foreground: #ffffff;
-  --secondary: #2d1e11;
+  --secondary: #2a1a0e;
   --secondary-foreground: #d4936e;
-  --muted: #221509;
-  --muted-foreground: #a08070;
-  --border: #3d2a1a;
-  --card: #211208;
-  --card-foreground: #f5ede3;
+  --muted: #1c1c1e;
+  --muted-foreground: #a1a1aa;
+  --border: #27272a;
+  --card: #18181b;
+  --card-foreground: #fafafa;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --ring: #d4824a;
 }
 
-/* ─── Dark accent overrides ─── */
 .dark[data-accent="rose"],
 .dark [data-accent="rose"] {
   --primary: #d6607e;
   --ring: #d6607e;
-  --secondary: #3a1520;
+  --secondary: #2d0f1a;
   --secondary-foreground: #f0a0b5;
 }
 .dark[data-accent="sage"],
 .dark [data-accent="sage"] {
   --primary: #5e9e8e;
   --ring: #5e9e8e;
-  --secondary: #132820;
+  --secondary: #0d1f1a;
   --secondary-foreground: #8ecfc3;
 }
 
-/* Warm ambient gradient for auth pages */
 .auth-bg::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: radial-gradient(ellipse 90% 55% at 50% -5%, rgba(192, 108, 46, 0.09) 0%, transparent 65%);
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(192, 108, 46, 0.05) 0%, transparent 60%);
   pointer-events: none;
 }

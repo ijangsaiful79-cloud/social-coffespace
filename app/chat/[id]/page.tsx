@@ -37,8 +37,8 @@ function getGradient(str: string) {
 function Avatar({ name, avatarUrl, isAnonymous, size = 36 }: { name: string; avatarUrl?: string | null; isAnonymous: boolean; size?: number }) {
   if (isAnonymous) {
     return (
-      <div style={{ width: size, height: size, borderRadius: '50%', backgroundColor: '#e8e4e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <EyeOff size={Math.round(size * 0.44)} color="#9b8d82" strokeWidth={1.75} />
+      <div style={{ width: size, height: size, borderRadius: '50%', backgroundColor: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <EyeOff size={Math.round(size * 0.44)} color="#a1a1aa" strokeWidth={1.75} />
       </div>
     )
   }

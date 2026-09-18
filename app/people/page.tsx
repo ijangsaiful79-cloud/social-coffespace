@@ -51,8 +51,8 @@ function Avatar({ name, avatarUrl, isAnonymous, size = 48 }: { name: string; ava
   const gradient = getGradient(name)
   const iconSize = Math.round(size * 0.44)
   if (isAnonymous) return (
-    <div style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', backgroundColor: '#e8e4e0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <EyeOff size={iconSize} color="#9b8d82" strokeWidth={1.75} />
+    <div style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', backgroundColor: '#f4f4f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <EyeOff size={iconSize} color="#a1a1aa" strokeWidth={1.75} />
     </div>
   )
   if (avatarUrl) return <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
@@ -640,10 +640,10 @@ function PeopleHereList() {
                   return (
                     <div key={person.id} className="rounded-2xl p-4 flex items-center gap-3 border transition-all duration-200"
                       style={{
-                        backgroundColor: isAnon ? '#f6f4f2' : '#ffffff',
-                        borderColor: isAnon ? '#d9d0c8' : '#e4d4c6',
+                        backgroundColor: '#ffffff',
+                        borderColor: isAnon ? '#e4e4e7' : '#e4e4e7',
                         borderStyle: isAnon ? 'dashed' : 'solid',
-                        boxShadow: isAnon ? 'none' : '0 1px 4px 0 rgba(0,0,0,0.06)',
+                        boxShadow: isAnon ? 'none' : '0 1px 3px 0 rgba(0,0,0,0.06)',
                       }}>
                       <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={48} />
                       <div className="flex-1 min-w-0">
@@ -728,9 +728,9 @@ function PeopleHereList() {
                       key={item.id}
                       className="w-full flex items-center gap-3 p-4 rounded-2xl border transition-all duration-200"
                       style={{
-                        borderColor: hasUnread ? '#c06c2e' : '#e4d4c6',
-                        backgroundColor: hasUnread ? '#fdf5ec' : '#ffffff',
-                        boxShadow: hasUnread ? '0 2px 8px 0 rgba(192,108,46,0.10)' : '0 1px 4px 0 rgba(0,0,0,0.05)',
+                        borderColor: hasUnread ? '#c06c2e' : '#e4e4e7',
+                        backgroundColor: hasUnread ? '#fff8f2' : '#ffffff',
+                        boxShadow: hasUnread ? '0 2px 8px 0 rgba(192,108,46,0.08)' : '0 1px 3px 0 rgba(0,0,0,0.05)',
                       }}
                     >
                       <button
