@@ -487,13 +487,21 @@ function PeopleHereList() {
 
   async function handleDeleteConversation() {
     if (!deleteConvoId) return
+    const targetId = deleteConvoId
     setDeleteLoading(true)
-    const supabase = createClient()
-    await supabase.from('messages').delete().eq('conversation_id', deleteConvoId)
-    await supabase.from('conversations').delete().eq('id', deleteConvoId)
-    setInbox((prev) => prev.filter((i) => i.id !== deleteConvoId))
-    const remaining = inbox.filter((i) => i.id !== deleteConvoId)
-    setUnreadTotal(remaining.reduce((sum, i) => sum + i.unreadCount, 0))
+
+    const res = await fetch(`/api/conversations/${targetId}`, { method: 'DELETE' })
+    if (!res.ok) {
+      showToast('Gagal hapus percakapan. Coba lagi.')
+      setDeleteLoading(false)
+      return
+    }
+
+    setInbox((prev) => {
+      const updated = prev.filter((i) => i.id !== targetId)
+      setUnreadTotal(updated.reduce((sum, i) => sum + i.unreadCount, 0))
+      return updated
+    })
     setDeleteConvoId(null)
     setDeleteLoading(false)
     showToast('Percakapan dihapus')
