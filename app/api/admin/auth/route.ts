@@ -1,11 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { checkRateLimit, resetRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
+  // Rate limiting by IP
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+    request.headers.get('x-real-ip') ??
+    '127.0.0.1'
+
+  const limit = checkRateLimit(ip)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: `Terlalu banyak percobaan. Coba lagi dalam ${Math.ceil((limit.retryAfterSeconds ?? 600) / 60)} menit.` },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(limit.retryAfterSeconds ?? 600) },
+      }
+    )
+  }
+
   const { email, password } = await request.json()
 
-  // Pre-build the success response so the SSR client can write session cookies onto it
   const successResponse = NextResponse.json({ success: true })
 
   const supabase = createServerClient(
@@ -13,9 +30,7 @@ export async function POST(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
+        getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) =>
             successResponse.cookies.set(name, value, options)
@@ -46,5 +61,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Akun ini tidak memiliki akses admin.' }, { status: 403 })
   }
 
+  // Login sukses — reset counter IP ini
+  resetRateLimit(ip)
   return successResponse
 }

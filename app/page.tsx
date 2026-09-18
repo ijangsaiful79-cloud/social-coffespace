@@ -307,7 +307,7 @@ export default async function LandingPage() {
             <p style={{ fontSize: 11, color: C.muted }}>
               &copy; {new Date().getFullYear()} Social Coffé
             </p>
-            <Link href="/admin/login" style={{ fontSize: 11, color: C.tan, textDecoration: 'none' }}>
+            <Link href="/admin/login?key=15e62ec6026d980c42b0433c48eaf59058308bf50e19766c" style={{ fontSize: 11, color: C.tan, textDecoration: 'none' }}>
               admin
             </Link>
           </div>
