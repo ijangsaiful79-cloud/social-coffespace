@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
-import SessionRedirect from '@/components/landing/SessionRedirect'
 import MapWrapper from '@/components/landing/MapWrapper'
 import type { ShopPin } from '@/components/landing/CoffeeMap'
 import { Coffee, Shield, EyeOff, Zap, MessageCircle, Bell, UserX, Mail } from 'lucide-react'
@@ -33,7 +32,6 @@ export default async function LandingPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#ffffff', color: '#1c1917' }}>
-      <SessionRedirect />
 
       {/* Nav */}
       <nav style={{
