@@ -1,74 +1,75 @@
 @import "tailwindcss";
 
-/* ── Accent: Mawar (Rose) ── */
+/* ─── Accent: Mawar (Rose) ─── */
 [data-accent="rose"] {
-  --background:         #fffbfb;
-  --card:               #ffffff;
-  --muted:              #fdf2f4;
-  --border:             #fce4ea;
-  --primary:            #c04868;
-  --primary-foreground: #ffffff;
-  --secondary:          #fff0f3;
+  --background:           #FDF5F5;
+  --card:                 #FFFFFF;
+  --muted:                #FAEAEA;
+  --border:               #F2D0D0;
+  --primary:              #B84060;
+  --primary-foreground:   #ffffff;
+  --secondary:            #FFF0F3;
   --secondary-foreground: #8b2540;
-  --ring:               #c04868;
+  --ring:                 #B84060;
 }
 
-/* ── Accent: Sage ── */
+/* ─── Accent: Sage (Forest) ─── */
 [data-accent="sage"] {
-  --background:         #f9fcfb;
-  --card:               #ffffff;
-  --muted:              #eef6f3;
-  --border:             #daeee8;
-  --primary:            #4a7c6e;
-  --primary-foreground: #ffffff;
-  --secondary:          #ecf7f3;
-  --secondary-foreground: #2c574c;
-  --ring:               #4a7c6e;
+  --background:           #F2F8F3;
+  --card:                 #FFFFFF;
+  --muted:                #E2F0E7;
+  --border:               #C4D9CC;
+  --primary:              #2D4A3E;
+  --primary-foreground:   #ffffff;
+  --secondary:            #E8F5EE;
+  --secondary-foreground: #1A3028;
+  --ring:                 #2D4A3E;
 }
 
+/* ─── Default: Kopi Parchment ─── */
 :root {
-  --background: #ffffff;
-  --foreground: #1c1917;
-  --primary: #c06c2e;
-  --primary-foreground: #ffffff;
-  --secondary: #fff7ed;
-  --secondary-foreground: #9a3412;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --border: #e4e4e7;
-  --card: #ffffff;
-  --card-foreground: #1c1917;
-  --destructive: #dc2626;
+  --background:           #F7EEE1;   /* warm parchment */
+  --foreground:           #2C1A08;   /* espresso */
+  --primary:              #C57A6E;   /* dusty rose */
+  --primary-foreground:   #ffffff;
+  --secondary:            #F0E6D5;   /* warm cream */
+  --secondary-foreground: #7A3D30;
+  --muted:                #EDE0CE;   /* warm sand */
+  --muted-foreground:     #8A7060;
+  --border:               #DDD0BC;   /* tan border */
+  --card:                 #FFFFFF;
+  --card-foreground:      #2C1A08;
+  --destructive:          #dc2626;
   --destructive-foreground: #ffffff;
-  --success: #16a34a;
-  --success-foreground: #ffffff;
-  --ring: #c06c2e;
-  --radius: 0.875rem;
+  --success:              #16a34a;
+  --success-foreground:   #ffffff;
+  --ring:                 #C57A6E;
+  --radius:               0.875rem;
 
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.04);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.09), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  --shadow-xs: 0 1px 2px 0 rgb(44 26 8 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(44 26 8 / 0.07), 0 1px 2px -1px rgb(44 26 8 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(44 26 8 / 0.09), 0 2px 4px -2px rgb(44 26 8 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(44 26 8 / 0.10), 0 4px 6px -4px rgb(44 26 8 / 0.05);
+  --shadow-xl: 0 20px 25px -5px rgb(44 26 8 / 0.11), 0 8px 10px -6px rgb(44 26 8 / 0.05);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-destructive: var(--destructive);
+  --color-muted:                var(--muted);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-border:               var(--border);
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-destructive:          var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-ring: var(--ring);
-  --font-sans: var(--font-geist-sans);
-  --font-display: var(--font-calistoga);
+  --color-ring:                 var(--ring);
+  --font-sans:                  var(--font-geist-sans);
+  --font-display:               var(--font-calistoga);
 }
 
 html {
@@ -111,57 +112,57 @@ textarea {
   font-family: var(--font-calistoga), serif;
 }
 
-/* Dark mode */
+/* ─── Dark mode ─── */
 .dark {
-  --background: #0f0f10;
-  --foreground: #fafafa;
-  --primary: #d4824a;
-  --primary-foreground: #ffffff;
-  --secondary: #2a1a0e;
-  --secondary-foreground: #d4936e;
-  --muted: #1c1c1e;
-  --muted-foreground: #a1a1aa;
-  --border: #27272a;
-  --card: #18181b;
-  --card-foreground: #fafafa;
-  --destructive: #ef4444;
+  --background:           #180E06;   /* deep espresso */
+  --foreground:           #F7EEE1;
+  --primary:              #D4907A;   /* lighter dusty rose */
+  --primary-foreground:   #ffffff;
+  --secondary:            #2A1608;
+  --secondary-foreground: #C49078;
+  --muted:                #221008;
+  --muted-foreground:     #A08070;
+  --border:               #3A2010;
+  --card:                 #1E1008;
+  --card-foreground:      #F7EEE1;
+  --destructive:          #ef4444;
   --destructive-foreground: #ffffff;
-  --ring: #d4824a;
+  --ring:                 #D4907A;
 }
 
-/* ── Dark + Mawar ── */
+/* ─── Dark + Mawar ─── */
 .dark[data-accent="rose"] {
-  --background:         #140a0e;
-  --foreground:         #fafafa;
-  --card:               #1e1117;
-  --card-foreground:    #fafafa;
-  --muted:              #271319;
-  --muted-foreground:   #a1a1aa;
-  --border:             #3a1c24;
-  --primary:            #d6607e;
-  --primary-foreground: #ffffff;
-  --secondary:          #2d1020;
-  --secondary-foreground: #f0a0b5;
-  --ring:               #d6607e;
+  --background:           #140A0E;
+  --foreground:           #FAF0F2;
+  --card:                 #1E1117;
+  --card-foreground:      #FAF0F2;
+  --muted:                #271319;
+  --muted-foreground:     #A07880;
+  --border:               #3A1C24;
+  --primary:              #D06080;
+  --primary-foreground:   #ffffff;
+  --secondary:            #2D1020;
+  --secondary-foreground: #F0A0B5;
+  --ring:                 #D06080;
 }
 
-/* ── Dark + Sage ── */
+/* ─── Dark + Sage ─── */
 .dark[data-accent="sage"] {
-  --background:         #08100e;
-  --foreground:         #fafafa;
-  --card:               #0e1a17;
-  --card-foreground:    #fafafa;
-  --muted:              #132119;
-  --muted-foreground:   #a1a1aa;
-  --border:             #1d3028;
-  --primary:            #5e9e8e;
-  --primary-foreground: #ffffff;
-  --secondary:          #0d201b;
-  --secondary-foreground: #8ecfc3;
-  --ring:               #5e9e8e;
+  --background:           #080E0C;
+  --foreground:           #F0F7F3;
+  --card:                 #0C1814;
+  --card-foreground:      #F0F7F3;
+  --muted:                #112018;
+  --muted-foreground:     #70A088;
+  --border:               #1A3028;
+  --primary:              #4A8070;
+  --primary-foreground:   #ffffff;
+  --secondary:            #0C2018;
+  --secondary-foreground: #80CCBA;
+  --ring:                 #4A8070;
 }
 
-/* ── iOS: prevent zoom on input focus (font-size must be ≥16px) ── */
+/* ─── iOS: prevent zoom on input focus ─── */
 @supports (-webkit-touch-callout: none) {
   input[type="text"],
   input[type="email"],
@@ -176,12 +177,12 @@ textarea {
   }
 }
 
-/* ── Safe area utilities ── */
+/* ─── Safe area utilities ─── */
 .safe-top    { padding-top:    env(safe-area-inset-top); }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 .safe-x      { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
 
-/* ── iOS momentum scroll for overflow containers ── */
+/* ─── iOS momentum scroll ─── */
 .scroll-touch {
   -webkit-overflow-scrolling: touch;
   overflow-y: auto;
@@ -192,6 +193,6 @@ textarea {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(192, 108, 46, 0.05) 0%, transparent 60%);
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(197, 122, 110, 0.08) 0%, transparent 60%);
   pointer-events: none;
 }

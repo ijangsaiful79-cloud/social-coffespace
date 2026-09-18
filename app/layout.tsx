@@ -34,8 +34,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",           // honour safe areas on notched iPhones
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)",  color: "#0f0f10" },
+    { media: "(prefers-color-scheme: light)", color: "#F7EEE1" },
+    { media: "(prefers-color-scheme: dark)",  color: "#180E06" },
   ],
 };
 

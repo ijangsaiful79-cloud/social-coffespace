@@ -584,7 +584,7 @@ function PeopleHereList() {
               </div>
             )}
             <div>
-              <h1 className="font-display text-2xl font-bold tracking-wide" style={{ color: '#c06c2e' }}>Social Coffé</h1>
+              <h1 className="font-display text-2xl font-bold tracking-wide text-primary">Social Coffé</h1>
               <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
                 <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
                 {shopName}
