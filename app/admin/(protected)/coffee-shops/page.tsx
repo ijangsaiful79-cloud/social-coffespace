@@ -2,9 +2,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase/server'
 import ShopListActions from './ShopListActions'
+import UniversalQR from '@/components/admin/UniversalQR'
 
 export default async function CoffeeShopsPage() {
   const supabase = createAdminClient()
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
   const { data: shops } = await supabase
     .from('coffee_shops')
@@ -13,6 +15,8 @@ export default async function CoffeeShopsPage() {
 
   return (
     <div>
+      <UniversalQR appUrl={appUrl} />
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Coffee Shops</h1>

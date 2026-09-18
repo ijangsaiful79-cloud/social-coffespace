@@ -218,10 +218,10 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
     <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: '#c06c2e', boxShadow: '0 4px 16px 0 rgba(192, 108, 46, 0.25)' }}>
+          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4" style={{ boxShadow: '0 4px 16px rgba(197,122,110,0.30)' }}>
             <Coffee size={28} strokeWidth={2} color="white" />
           </div>
-          <h1 className="font-display text-2xl font-bold mb-1" style={{ color: '#c06c2e' }}>{shop.name}</h1>
+          <h1 className="font-display text-2xl font-bold mb-1 text-primary">{shop.name}</h1>
           <p className="text-sm text-muted-foreground">{shop.address}</p>
         </div>
 
