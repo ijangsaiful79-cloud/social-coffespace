@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import LocationPicker from '@/components/admin/LocationPicker'
+import LogoUploader from '@/components/admin/LogoUploader'
 
 interface Props { params: Promise<{ id: string }> }
 
@@ -15,6 +16,7 @@ export default function EditCoffeeShopPage({ params }: Props) {
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
   const [radius, setRadius] = useState('100')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,6 +30,7 @@ export default function EditCoffeeShopPage({ params }: Props) {
         setLat(shop.latitude)
         setLng(shop.longitude)
         setRadius(String(shop.radius_meter))
+        setLogoUrl(shop.logo_url ?? null)
         setLoading(false)
       })
   }, [id])
@@ -47,6 +50,7 @@ export default function EditCoffeeShopPage({ params }: Props) {
         latitude: lat,
         longitude: lng,
         radius_meter: parseInt(radius),
+        logo_url: logoUrl || null,
       }),
     })
 
@@ -79,6 +83,8 @@ export default function EditCoffeeShopPage({ params }: Props) {
           <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)}
             className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
         </div>
+
+        <LogoUploader currentLogoUrl={logoUrl} onUpload={(url) => setLogoUrl(url || null)} />
 
         <LocationPicker
           lat={lat}

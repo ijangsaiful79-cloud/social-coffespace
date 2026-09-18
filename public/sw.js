@@ -3,7 +3,7 @@ self.addEventListener('push', function (event) {
   const title = data.title || 'Pesan baru'
   const options = {
     body: data.body || '',
-    icon: '/icon-192.png',
+    icon: data.icon || '/icon-192.png',
     badge: '/icon-96.png',
     data: { url: data.url || '/' },
     requireInteraction: false,

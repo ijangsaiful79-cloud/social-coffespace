@@ -100,7 +100,7 @@ export default function ChatPage({ params }: Props) {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const [shopContext, setShopContext] = useState<{ name: string; lat: number; lng: number; radius: number } | null>(null)
+  const [shopContext, setShopContext] = useState<{ name: string; lat: number; lng: number; radius: number; logo_url?: string | null } | null>(null)
   const [locationExitLoading, setLocationExitLoading] = useState(false)
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -131,7 +131,7 @@ export default function ChatPage({ params }: Props) {
       const raw = sessionStorage.getItem('shopContext')
       if (raw) {
         const ctx = JSON.parse(raw)
-        setShopContext({ name: ctx.name, lat: ctx.lat, lng: ctx.lng, radius: ctx.radius })
+        setShopContext({ name: ctx.name, lat: ctx.lat, lng: ctx.lng, radius: ctx.radius, logo_url: ctx.logo_url ?? null })
       }
     } catch {
       // sessionStorage not available or invalid JSON
@@ -287,6 +287,7 @@ export default function ChatPage({ params }: Props) {
           title: `Pesan baru`,
           body: messageText.length > 60 ? messageText.slice(0, 60) + '...' : messageText,
           url: `/chat/${conversationId}`,
+          icon: shopContext?.logo_url || undefined,
         }),
       }).catch(() => {})
     }

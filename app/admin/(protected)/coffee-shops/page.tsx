@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase/server'
 import ShopListActions from './ShopListActions'
 
@@ -41,7 +42,18 @@ export default async function CoffeeShopsPage() {
           <tbody>
             {shops?.map((shop) => (
               <tr key={shop.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition">
-                <td className="px-4 py-3 font-medium">{shop.name}</td>
+                <td className="px-4 py-3 font-medium">
+                  <div className="flex items-center gap-3">
+                    {shop.logo_url ? (
+                      <Image src={shop.logo_url} alt={shop.name} width={32} height={32} className="w-8 h-8 rounded-lg object-cover border border-border shrink-0" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg bg-muted border border-border shrink-0 flex items-center justify-center text-muted-foreground text-xs font-bold">
+                        {shop.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    {shop.name}
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">{shop.address}</td>
                 <td className="px-4 py-3 text-muted-foreground">{shop.radius_meter}m</td>
                 <td className="px-4 py-3">

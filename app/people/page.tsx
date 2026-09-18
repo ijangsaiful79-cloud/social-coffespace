@@ -14,6 +14,7 @@ import {
   Flag, Ban, X, Coffee, EyeOff, Phone, UserRound, Camera, Palette,
 } from 'lucide-react'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
+import Image from 'next/image'
 
 interface PersonHere extends Profile { session_id: string }
 
@@ -124,6 +125,7 @@ function PeopleHereList() {
   const [inbox, setInbox] = useState<ConversationItem[]>([])
   const [inboxLoading, setInboxLoading] = useState(false)
   const [shopName, setShopName] = useState('')
+  const [shopLogo, setShopLogo] = useState<string | null>(null)
   const [shopCoords, setShopCoords] = useState<{ lat: number; lng: number; radius: number } | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
@@ -191,12 +193,13 @@ function PeopleHereList() {
       userIdRef.current = uid
       setCurrentUserId(uid)
 
-      const { data: shop } = await supabase.from('coffee_shops').select('name, latitude, longitude, radius_meter').eq('id', shopId).single()
+      const { data: shop } = await supabase.from('coffee_shops').select('name, latitude, longitude, radius_meter, logo_url').eq('id', shopId).single()
       if (shop) {
         setShopName(shop.name)
+        setShopLogo(shop.logo_url ?? null)
         const coords = { lat: shop.latitude, lng: shop.longitude, radius: shop.radius_meter }
         setShopCoords(coords)
-        sessionStorage.setItem('shopContext', JSON.stringify({ id: shopId, name: shop.name, ...coords }))
+        sessionStorage.setItem('shopContext', JSON.stringify({ id: shopId, name: shop.name, logo_url: shop.logo_url ?? null, ...coords }))
       }
 
       const { data: myProf } = await supabase.from('profiles').select('*').eq('user_id', uid).single()
@@ -282,7 +285,7 @@ function PeopleHereList() {
     let blob: Blob
     try {
       blob = await new Promise<Blob>((resolve, reject) => {
-        const img = new Image()
+        const img = new window.Image()
         const url = URL.createObjectURL(file)
         img.onload = () => {
           const MAX = 600
@@ -574,12 +577,19 @@ function PeopleHereList() {
       {/* Header */}
       <div className="px-4 pb-3" style={{ paddingTop: 'max(24px, env(safe-area-inset-top))' }}>
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="font-display text-2xl font-bold tracking-wide" style={{ color: '#c06c2e' }}>Social Coffé</h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-              <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
-              {shopName}
-            </p>
+          <div className="flex items-center gap-3">
+            {shopLogo && (
+              <div className="w-10 h-10 rounded-xl overflow-hidden border border-border shrink-0">
+                <Image src={shopLogo} alt={shopName} width={40} height={40} className="object-cover w-full h-full" />
+              </div>
+            )}
+            <div>
+              <h1 className="font-display text-2xl font-bold tracking-wide" style={{ color: '#c06c2e' }}>Social Coffé</h1>
+              <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
+                {shopName}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={openEdit} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm border border-border hover:bg-muted transition min-h-[44px]">

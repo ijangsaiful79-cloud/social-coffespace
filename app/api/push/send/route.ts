@@ -3,7 +3,7 @@ import webpush from 'web-push'
 import { createAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
-  const { receiverId, title, body, url } = await request.json()
+  const { receiverId, title, body, url, icon } = await request.json()
   if (!receiverId) return NextResponse.json({ error: 'Missing receiverId' }, { status: 400 })
 
   if (!process.env.VAPID_SUBJECT || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   try {
     await webpush.sendNotification(
       data.subscription as webpush.PushSubscription,
-      JSON.stringify({ title, body, url: url || '/' })
+      JSON.stringify({ title, body, url: url || '/', icon: icon || null })
     )
     return NextResponse.json({ success: true })
   } catch {

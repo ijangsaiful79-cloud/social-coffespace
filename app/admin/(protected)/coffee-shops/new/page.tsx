@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { generateCoffeeShopToken } from '@/lib/utils/token'
 import LocationPicker from '@/components/admin/LocationPicker'
+import LogoUploader from '@/components/admin/LogoUploader'
 
 export default function NewCoffeeShopPage() {
   const router = useRouter()
@@ -12,6 +13,7 @@ export default function NewCoffeeShopPage() {
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
   const [radius, setRadius] = useState('100')
+  const [logoUrl, setLogoUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -34,6 +36,7 @@ export default function NewCoffeeShopPage() {
         radius_meter: parseInt(radius),
         access_token: accessToken,
         slug: accessToken.split('-').slice(0, -1).join('-'),
+        logo_url: logoUrl || null,
       }),
     })
 
@@ -80,6 +83,8 @@ export default function NewCoffeeShopPage() {
             className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
           />
         </div>
+
+        <LogoUploader onUpload={(url) => setLogoUrl(url)} />
 
         <LocationPicker
           lat={lat}
