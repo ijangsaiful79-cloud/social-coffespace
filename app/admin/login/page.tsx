@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
         <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
           <div className="text-center mb-8">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-              style={{ background: '#c06c2e' }}>
+              style={{ background: 'var(--primary)' }}>
               <Coffee size={20} strokeWidth={2} color="white" />
             </div>
             <h1 className="text-lg font-bold">Super Admin</h1>

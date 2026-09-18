@@ -26,7 +26,7 @@ export default function AdminSidebar() {
   return (
     <aside className="w-full md:w-52 md:shrink-0 border-b md:border-b-0 md:border-r border-border bg-card px-4 py-4 md:py-6 flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible">
       <div className="hidden md:flex items-center gap-2 mb-6 px-2">
-        <Coffee size={16} strokeWidth={2} style={{ color: '#c06c2e' }} />
+        <Coffee size={16} strokeWidth={2} className="text-primary" />
         <span className="font-bold text-sm">Coffee Dating</span>
       </div>
 

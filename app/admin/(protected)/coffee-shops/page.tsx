@@ -4,6 +4,27 @@ import { createAdminClient } from '@/lib/supabase/server'
 import ShopListActions from './ShopListActions'
 import UniversalQR from '@/components/admin/UniversalQR'
 
+const PLAN_BADGE: Record<string, string> = {
+  starter:  'bg-muted text-muted-foreground',
+  business: 'bg-primary/10 text-primary',
+  pro:      'bg-amber-100 text-amber-700',
+}
+
+function planLabel(plan: string) {
+  return plan === 'business' ? 'Business' : plan === 'pro' ? 'Pro' : 'Starter'
+}
+
+function expiryDisplay(expiresAt: string | null) {
+  if (!expiresAt) return <span className="text-muted-foreground text-xs">—</span>
+  const d = new Date(expiresAt)
+  const now = new Date()
+  const days = Math.ceil((d.getTime() - now.getTime()) / 86400000)
+  const label = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })
+  if (days < 0) return <span className="text-xs font-semibold text-red-500">Expired</span>
+  if (days <= 30) return <span className="text-xs font-semibold text-amber-600">{label} ({days}h)</span>
+  return <span className="text-xs text-muted-foreground">{label}</span>
+}
+
 export default async function CoffeeShopsPage() {
   const supabase = createAdminClient()
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
@@ -20,25 +41,22 @@ export default async function CoffeeShopsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Coffee Shops</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {shops?.length ?? 0} lokasi terdaftar
-          </p>
+          <p className="text-sm text-muted-foreground mt-0.5">{shops?.length ?? 0} lokasi terdaftar</p>
         </div>
-        <Link
-          href="/admin/coffee-shops/new"
-          className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition"
-        >
+        <Link href="/admin/coffee-shops/new"
+          className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition">
           + Tambah Coffee Shop
         </Link>
       </div>
 
       <div className="bg-card border border-border rounded-2xl overflow-hidden overflow-x-auto">
-        <table className="w-full text-sm min-w-[700px]">
+        <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="border-b border-border bg-muted/50">
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nama</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Alamat</th>
-              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Radius</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Paket</th>
+              <th className="text-left px-4 py-3 font-medium text-muted-foreground">Akses Berakhir</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
               <th className="text-left px-4 py-3 font-medium text-muted-foreground">Aksi</th>
             </tr>
@@ -49,25 +67,34 @@ export default async function CoffeeShopsPage() {
                 <td className="px-4 py-3 font-medium">
                   <div className="flex items-center gap-3">
                     {shop.logo_url ? (
-                      <Image src={shop.logo_url} alt={shop.name} width={32} height={32} className="w-8 h-8 rounded-lg object-cover border border-border shrink-0" />
+                      <Image src={shop.logo_url} alt={shop.name} width={32} height={32}
+                        className="w-8 h-8 rounded-lg object-cover border border-border shrink-0" />
                     ) : (
                       <div className="w-8 h-8 rounded-lg bg-muted border border-border shrink-0 flex items-center justify-center text-muted-foreground text-xs font-bold">
                         {shop.name.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    {shop.name}
+                    <div>
+                      <Link href={`/admin/coffee-shops/${shop.id}`} className="hover:text-primary transition">
+                        {shop.name}
+                      </Link>
+                      {shop.owner_contact && (
+                        <p className="text-xs text-muted-foreground">{shop.owner_contact}</p>
+                      )}
+                    </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">{shop.address}</td>
-                <td className="px-4 py-3 text-muted-foreground">{shop.radius_meter}m</td>
+                <td className="px-4 py-3 text-muted-foreground max-w-[180px] truncate">{shop.address}</td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      shop.is_active
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
+                  <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${PLAN_BADGE[shop.plan ?? 'starter']}`}>
+                    {planLabel(shop.plan ?? 'starter')}
+                  </span>
+                </td>
+                <td className="px-4 py-3">{expiryDisplay(shop.expires_at)}</td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    shop.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  }`}>
                     {shop.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
@@ -78,7 +105,7 @@ export default async function CoffeeShopsPage() {
             ))}
             {(!shops || shops.length === 0) && (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                   Belum ada coffee shop. Tambah yang pertama.
                 </td>
               </tr>

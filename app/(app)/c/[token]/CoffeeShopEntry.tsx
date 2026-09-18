@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { isWithinRadius } from '@/lib/utils/distance'
 import { Coffee, MapPin, EyeOff, UserRound, Loader2 } from 'lucide-react'
+import InterestPicker from '@/components/InterestPicker'
 
 interface Shop {
   id: string
@@ -31,6 +32,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
   const [instagram, setInstagram] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
   const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('')
+  const [interests, setInterests] = useState<string[]>([])
   const [joinError, setJoinError] = useState<string | null>(null)
   const [existingUserId, setExistingUserId] = useState<string | null>(null)
 
@@ -198,6 +200,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
       ...(mode === 'full' && {
         age: age ? parseInt(age) : null,
         bio: bio.trim() || null,
+        interests: interests.length > 0 ? interests : null,
         instagram: instagram.trim() || null,
         whatsapp: whatsapp.trim() || null,
       }),
@@ -367,6 +370,7 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
                   rows={2}
                   className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
                 />
+                <InterestPicker selected={interests} onChange={setInterests} />
                 <input
                   type="text"
                   value={instagram}

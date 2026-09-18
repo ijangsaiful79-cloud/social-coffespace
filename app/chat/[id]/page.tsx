@@ -19,7 +19,7 @@ const REPORT_REASONS = [
 ]
 
 const AVATAR_GRADIENTS = [
-  ['#c06c2e', '#e09260'],  // coffee amber
+  ['#C57A6E', '#D4907A'],  // dusty rose
   ['#b55c6e', '#d98496'],  // dusty rose
   ['#7c6aad', '#a892d4'],  // soft violet
   ['#4a7fc1', '#7aaee8'],  // periwinkle

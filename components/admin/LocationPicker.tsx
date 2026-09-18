@@ -77,9 +77,9 @@ export default function LocationPicker({ lat, lng, onChange }: Props) {
 
       const pinIcon = L.divIcon({
         html: `<svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22S28 24.5 28 14C28 6.27 21.73 0 14 0z" fill="#c06c2e" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.3))"/>
+          <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22S28 24.5 28 14C28 6.27 21.73 0 14 0z" fill="#C57A6E" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.3))"/>
           <circle cx="14" cy="14" r="6" fill="white" fill-opacity="0.95"/>
-          <circle cx="14" cy="14" r="3.5" fill="#c06c2e"/>
+          <circle cx="14" cy="14" r="3.5" fill="#C57A6E"/>
         </svg>`,
         className: '',
         iconSize: [28, 36],

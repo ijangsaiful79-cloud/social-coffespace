@@ -28,6 +28,7 @@ export interface Profile {
   instagram: string | null
   tiktok: string | null
   whatsapp: string | null
+  interests: string[] | null
   chat_enabled: boolean
   is_anonymous: boolean
   created_at: string

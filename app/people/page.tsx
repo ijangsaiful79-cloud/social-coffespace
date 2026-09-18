@@ -14,6 +14,7 @@ import {
   Flag, Ban, X, Coffee, EyeOff, Phone, UserRound, Camera, Palette,
 } from 'lucide-react'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
+import InterestPicker from '@/components/InterestPicker'
 import Image from 'next/image'
 
 interface PersonHere extends Profile { session_id: string }
@@ -32,7 +33,7 @@ const GENDER_LABEL: Record<string, string> = {
 const REPORT_REASONS = ['Spam', 'Konten tidak pantas', 'Pelecehan atau intimidasi', 'Profil palsu', 'Lainnya']
 
 const AVATAR_GRADIENTS = [
-  ['#c06c2e', '#e09260'],  // coffee amber
+  ['#C57A6E', '#D4907A'],  // dusty rose
   ['#b55c6e', '#d98496'],  // dusty rose
   ['#7c6aad', '#a892d4'],  // soft violet
   ['#4a7fc1', '#7aaee8'],  // periwinkle
@@ -126,6 +127,7 @@ function PeopleHereList() {
   const [inboxLoading, setInboxLoading] = useState(false)
   const [shopName, setShopName] = useState('')
   const [shopLogo, setShopLogo] = useState<string | null>(null)
+  const [shopPlan, setShopPlan] = useState<string>('starter')
   const [shopCoords, setShopCoords] = useState<{ lat: number; lng: number; radius: number } | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [myProfile, setMyProfile] = useState<Profile | null>(null)
@@ -149,6 +151,7 @@ function PeopleHereList() {
   const [editInstagram, setEditInstagram] = useState('')
   const [editTiktok, setEditTiktok] = useState('')
   const [editWhatsapp, setEditWhatsapp] = useState('')
+  const [editInterests, setEditInterests] = useState<string[]>([])
   const [editChatEnabled, setEditChatEnabled] = useState(true)
   const [editSaving, setEditSaving] = useState(false)
 
@@ -193,10 +196,11 @@ function PeopleHereList() {
       userIdRef.current = uid
       setCurrentUserId(uid)
 
-      const { data: shop } = await supabase.from('coffee_shops').select('name, latitude, longitude, radius_meter, logo_url').eq('id', shopId).single()
+      const { data: shop } = await supabase.from('coffee_shops').select('name, latitude, longitude, radius_meter, logo_url, plan').eq('id', shopId).single()
       if (shop) {
         setShopName(shop.name)
-        setShopLogo(shop.logo_url ?? null)
+        setShopPlan(shop.plan ?? 'starter')
+        setShopLogo((shop.plan === 'business' || shop.plan === 'pro') ? (shop.logo_url ?? null) : null)
         const coords = { lat: shop.latitude, lng: shop.longitude, radius: shop.radius_meter }
         setShopCoords(coords)
         sessionStorage.setItem('shopContext', JSON.stringify({ id: shopId, name: shop.name, logo_url: shop.logo_url ?? null, ...coords }))
@@ -423,6 +427,7 @@ function PeopleHereList() {
       setEditInstagram(myProfile.instagram ?? '')
       setEditTiktok(myProfile.tiktok ?? '')
       setEditWhatsapp(myProfile.whatsapp ?? '')
+      setEditInterests(myProfile.interests ?? [])
       setEditChatEnabled(myProfile.chat_enabled ?? true)
     }
     setEditOpen(true)
@@ -501,6 +506,7 @@ function PeopleHereList() {
         age: editAge ? parseInt(editAge) : null,
         gender: editGender,
         bio: editBio.trim() || null,
+        interests: editInterests.length > 0 ? editInterests : null,
         instagram: editInstagram.trim() || null,
         tiktok: editTiktok.trim() || null,
         whatsapp: editWhatsapp.trim() || null,
@@ -592,17 +598,30 @@ function PeopleHereList() {
       <div className="px-4 pb-3" style={{ paddingTop: 'max(24px, env(safe-area-inset-top))' }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            {shopLogo && (
+            {shopLogo ? (
               <div className="w-10 h-10 rounded-xl overflow-hidden border border-border shrink-0">
                 <Image src={shopLogo} alt={shopName} width={40} height={40} className="object-cover w-full h-full" />
               </div>
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Coffee size={18} strokeWidth={2} className="text-primary" />
+              </div>
             )}
             <div>
-              <h1 className="font-display text-2xl font-bold tracking-wide text-primary">Social Coffé</h1>
-              <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
-                {shopName}
-              </p>
+              {(shopPlan === 'business' || shopPlan === 'pro') ? (
+                <>
+                  <h1 className="font-display text-xl font-bold tracking-wide text-foreground leading-tight">{shopName}</h1>
+                  <p className="text-xs text-muted-foreground mt-0.5">by Social Coffé</p>
+                </>
+              ) : (
+                <>
+                  <h1 className="font-display text-2xl font-bold tracking-wide text-primary">Social Coffé</h1>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                    <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
+                    {shopName}
+                  </p>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -707,46 +726,93 @@ function PeopleHereList() {
                 {filteredPeople.map((person) => {
                   const isAnon = person.is_anonymous
                   const isLoading = sayingHiTo.has(person.user_id)
+                  const genderLabel = person.gender === 'male' ? 'Pria' : person.gender === 'female' ? 'Wanita' : null
                   return (
-                    <div key={person.id} className="rounded-2xl p-4 flex items-center gap-3 border transition-all duration-200"
+                    <div key={person.id}
+                      className="rounded-2xl border transition-all duration-200"
                       style={{
-                        backgroundColor: '#ffffff',
-                        borderColor: isAnon ? '#e4e4e7' : '#e4e4e7',
+                        backgroundColor: 'var(--card)',
+                        borderColor: 'var(--border)',
                         borderStyle: isAnon ? 'dashed' : 'solid',
-                        boxShadow: isAnon ? 'none' : '0 1px 3px 0 rgba(0,0,0,0.06)',
+                        boxShadow: isAnon ? 'none' : '0 2px 8px 0 rgba(44,26,8,0.06)',
                       }}>
-                      <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={48} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className={`font-semibold truncate ${isAnon ? 'text-muted-foreground' : 'text-foreground'}`}>{person.display_name}</p>
-                          {isAnon
-                            ? <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md font-medium">anonim</span>
-                            : <span className="text-xs text-primary bg-secondary px-1.5 py-0.5 rounded-md font-medium border border-border">profil lengkap</span>
-                          }
+                      <div className="flex items-start gap-3.5 p-4">
+                        {/* Avatar */}
+                        <div className="shrink-0 relative">
+                          <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={64} />
+                          {!isAnon && genderLabel && (
+                            <span className="absolute -bottom-1 -right-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground leading-tight">
+                              {genderLabel[0]}
+                            </span>
+                          )}
                         </div>
-                        {isAnon
-                          ? <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><EyeOff size={11} strokeWidth={2} />Identitas disembunyikan</p>
-                          : <button
-                              onClick={() => setProfilePreview(person)}
-                              className="mt-1.5 text-xs font-semibold text-primary border border-primary/30 bg-secondary px-2.5 py-1 rounded-lg hover:bg-primary/10 transition"
-                            >
-                              Lihat Profil
-                            </button>
-                        }
-                      </div>
-                      <div className="shrink-0 flex flex-col items-end gap-2">
-                        {person.chat_enabled && (
-                          <button
-                            onClick={() => handleSayHi(person.user_id)}
-                            disabled={isLoading}
-                            className="w-11 h-11 rounded-xl flex items-center justify-center bg-primary hover:opacity-90 active:scale-95 transition disabled:opacity-50"
-                            title="Mulai chat"
-                          >
-                            <MessageSquare size={17} color="#fff" strokeWidth={2} />
-                          </button>
-                        )}
-                        <button onClick={() => setMenuTarget(person)} className="w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted transition">
-                          <MoreHorizontal size={16} strokeWidth={2} />
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                            <p className={`font-bold text-base leading-tight truncate ${isAnon ? 'text-muted-foreground' : 'text-foreground'}`}>
+                              {person.display_name}
+                              {!isAnon && person.age ? <span className="font-normal text-sm text-muted-foreground">, {person.age}</span> : null}
+                            </p>
+                          </div>
+
+                          {isAnon ? (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                              <EyeOff size={10} strokeWidth={2} />Identitas disembunyikan
+                            </p>
+                          ) : (
+                            <>
+                              {person.bio && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-1 leading-relaxed italic">"{person.bio}"</p>
+                              )}
+                              {person.interests && person.interests.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                  {person.interests.slice(0, 3).map((tag) => (
+                                    <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary border border-border text-secondary-foreground">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                  {person.interests.length > 3 && (
+                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                      +{person.interests.length - 3}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {!person.bio && (!person.interests || person.interests.length === 0) && (
+                                <span className="inline-block mt-1 text-xs text-primary bg-secondary px-2 py-0.5 rounded-full font-medium border border-border">
+                                  Di sini sekarang
+                                </span>
+                              )}
+                            </>
+                          )}
+
+                          {/* Action row */}
+                          {!isAnon && (
+                            <div className="flex items-center gap-2 mt-2.5">
+                              <button
+                                onClick={() => setProfilePreview(person)}
+                                className="text-xs font-semibold text-muted-foreground border border-border px-3 py-1.5 rounded-lg hover:bg-muted transition min-h-[32px]"
+                              >
+                                Lihat Profil
+                              </button>
+                              {person.chat_enabled && (
+                                <button
+                                  onClick={() => handleSayHi(person.user_id)}
+                                  disabled={isLoading}
+                                  className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground px-3 py-1.5 rounded-lg hover:opacity-90 active:scale-95 transition disabled:opacity-50 min-h-[32px]"
+                                >
+                                  <MessageSquare size={13} strokeWidth={2} />
+                                  {isLoading ? 'Mengirim...' : 'Say Hi'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Menu */}
+                        <button onClick={() => setMenuTarget(person)} className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition mt-0.5">
+                          <MoreHorizontal size={15} strokeWidth={2} />
                         </button>
                       </div>
                     </div>
@@ -794,9 +860,9 @@ function PeopleHereList() {
                       key={item.id}
                       className="w-full flex items-center gap-3 p-4 rounded-2xl border transition-all duration-200"
                       style={{
-                        borderColor: hasUnread ? '#c06c2e' : '#e4e4e7',
-                        backgroundColor: hasUnread ? '#fff8f2' : '#ffffff',
-                        boxShadow: hasUnread ? '0 2px 8px 0 rgba(192,108,46,0.08)' : '0 1px 3px 0 rgba(0,0,0,0.05)',
+                        borderColor: hasUnread ? 'var(--primary)' : 'var(--border)',
+                        backgroundColor: hasUnread ? 'var(--secondary)' : 'var(--card)',
+                        boxShadow: hasUnread ? '0 2px 8px 0 rgba(197,122,110,0.12)' : '0 1px 3px 0 rgba(0,0,0,0.05)',
                       }}
                     >
                       <button
@@ -976,6 +1042,7 @@ function PeopleHereList() {
                       className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition resize-none" />
                     <p className="text-xs text-muted-foreground text-right mt-0.5">{editBio.length}/150</p>
                   </div>
+                  <InterestPicker selected={editInterests} onChange={setEditInterests} />
                   <div>
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Instagram</label>
                     <input type="text" value={editInstagram} onChange={(e) => setEditInstagram(e.target.value)} placeholder="username (tanpa @)"
@@ -1124,8 +1191,22 @@ function PeopleHereList() {
 
               {/* Bio */}
               {profilePreview.bio && (
-                <div className="mb-4 p-3 rounded-xl bg-muted/50 border border-border">
+                <div className="mb-3 p-3 rounded-xl bg-muted/50 border border-border">
                   <p className="text-sm text-foreground leading-relaxed">{profilePreview.bio}</p>
+                </div>
+              )}
+
+              {/* Interests */}
+              {profilePreview.interests && profilePreview.interests.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Minat & Hobi</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profilePreview.interests.map((tag) => (
+                      <span key={tag} className="text-xs font-semibold px-3 py-1 rounded-full bg-secondary border border-border text-secondary-foreground">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 

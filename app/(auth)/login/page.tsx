@@ -41,8 +41,8 @@ function LoginForm() {
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
             style={{
-              background: '#c06c2e',
-              boxShadow: '0 4px 16px 0 rgba(192, 108, 46, 0.25)',
+              background: 'var(--primary)',
+              boxShadow: '0 4px 16px 0 rgba(197, 122, 110, 0.25)',
             }}
           >
             <Coffee size={28} strokeWidth={2} color="white" />

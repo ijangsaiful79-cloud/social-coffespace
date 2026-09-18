@@ -64,6 +64,34 @@ export default async function CoffeeShopDetailPage({ params }: Props) {
             </div>
           </div>
 
+          <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
+            <div>
+              <p className="text-xs text-muted-foreground">Paket</p>
+              <p className="text-sm font-semibold mt-0.5 capitalize">{shop.plan ?? 'starter'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">NFC Card</p>
+              <p className="text-sm font-medium mt-0.5">
+                {shop.plan === 'pro' ? 20 : shop.plan === 'business' ? 10 : 5} kartu
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Akses Berakhir</p>
+              <p className="text-sm font-medium mt-0.5">
+                {shop.expires_at
+                  ? new Date(shop.expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                  : '—'}
+              </p>
+            </div>
+          </div>
+
+          {shop.owner_contact && (
+            <div className="pt-4 border-t border-border">
+              <p className="text-xs text-muted-foreground">Kontak Pemilik</p>
+              <p className="text-sm font-medium mt-0.5">{shop.owner_contact}</p>
+            </div>
+          )}
+
           <div className="mt-4 pt-4 border-t border-border">
             <p className="text-xs text-muted-foreground mb-1">Sesi Aktif Sekarang</p>
             <p className="text-2xl font-bold text-primary">{activeSessions ?? 0}</p>

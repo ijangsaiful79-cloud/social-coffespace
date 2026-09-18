@@ -23,11 +23,9 @@ export default function PushPromptBanner({ userId, vapidKey }: Props) {
 
     if (isIos) {
       if (!isStandalone) {
-        // Not installed as PWA — show install guide (use localStorage so it persists)
         if (localStorage.getItem('push-ios-guide-dismissed')) return
         setState('ios-guide')
       } else {
-        // Installed as PWA on iOS 16.4+ — can request push permission via user gesture
         if (sessionStorage.getItem('push-banner-dismissed')) return
         if ('serviceWorker' in navigator && 'PushManager' in window) {
           setState('ios-ask')
@@ -74,17 +72,17 @@ export default function PushPromptBanner({ userId, vapidKey }: Props) {
 
   if (state === 'ios-guide') {
     return (
-      <div className="mx-4 mb-3 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-          <Smartphone size={15} strokeWidth={2} className="text-amber-700" />
+      <div className="mx-4 mb-3 flex items-start gap-3 bg-secondary border border-border rounded-2xl px-4 py-3">
+        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+          <Smartphone size={15} strokeWidth={2} className="text-secondary-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-amber-900">Aktifkan notifikasi di iPhone</p>
-          <p className="text-xs text-amber-700 mt-0.5">
+          <p className="text-sm font-semibold text-foreground">Aktifkan notifikasi di iPhone</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
             Tap <strong>Share ↑</strong> lalu pilih <strong>"Add to Home Screen"</strong>, kemudian buka app dari ikon di home screen.
           </p>
         </div>
-        <button onClick={dismissGuide} className="w-6 h-6 rounded-full flex items-center justify-center text-amber-400 hover:bg-amber-100 transition shrink-0">
+        <button onClick={dismissGuide} className="w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition shrink-0">
           <X size={13} strokeWidth={2.5} />
         </button>
       </div>
@@ -93,13 +91,13 @@ export default function PushPromptBanner({ userId, vapidKey }: Props) {
 
   if (state === 'ios-ask') {
     return (
-      <div className="mx-4 mb-3 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-          <Bell size={14} strokeWidth={2} className="text-amber-700" />
+      <div className="mx-4 mb-3 flex items-center gap-3 bg-secondary border border-border rounded-2xl px-4 py-3">
+        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+          <Bell size={14} strokeWidth={2} className="text-secondary-foreground" />
         </div>
-        <p className="flex-1 text-sm font-medium text-amber-900">Aktifkan notifikasi pesan baru di iPhone</p>
-        <button onClick={enableNotifications} className="shrink-0 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition">Aktifkan</button>
-        <button onClick={dismissAsk} className="w-6 h-6 rounded-full flex items-center justify-center text-amber-400 hover:bg-amber-100 transition shrink-0">
+        <p className="flex-1 text-sm font-medium text-foreground">Aktifkan notifikasi pesan baru di iPhone</p>
+        <button onClick={enableNotifications} className="shrink-0 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition">Aktifkan</button>
+        <button onClick={dismissAsk} className="w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition shrink-0">
           <X size={13} strokeWidth={2.5} />
         </button>
       </div>
@@ -107,13 +105,13 @@ export default function PushPromptBanner({ userId, vapidKey }: Props) {
   }
 
   return (
-    <div className="mx-4 mb-3 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-      <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-        <Bell size={14} strokeWidth={2} className="text-amber-700" />
+    <div className="mx-4 mb-3 flex items-center gap-3 bg-secondary border border-border rounded-2xl px-4 py-3">
+      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+        <Bell size={14} strokeWidth={2} className="text-secondary-foreground" />
       </div>
-      <p className="flex-1 text-sm font-medium text-amber-900">Aktifkan notifikasi pesan baru</p>
-      <button onClick={enableNotifications} className="shrink-0 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition">Aktifkan</button>
-      <button onClick={dismissAsk} className="w-6 h-6 rounded-full flex items-center justify-center text-amber-400 hover:bg-amber-100 transition shrink-0">
+      <p className="flex-1 text-sm font-medium text-foreground">Aktifkan notifikasi pesan baru</p>
+      <button onClick={enableNotifications} className="shrink-0 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition">Aktifkan</button>
+      <button onClick={dismissAsk} className="w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition shrink-0">
         <X size={13} strokeWidth={2.5} />
       </button>
     </div>

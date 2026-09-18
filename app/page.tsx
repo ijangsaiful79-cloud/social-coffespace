@@ -4,7 +4,7 @@ import MapWrapper from '@/components/landing/MapWrapper'
 
 export const revalidate = 60
 import type { ShopPin } from '@/components/landing/CoffeeMap'
-import { Coffee, Shield, EyeOff, Zap, MessageCircle, Bell, UserX, Mail } from 'lucide-react'
+import { Coffee, Shield, EyeOff, Zap, MessageCircle, Bell, UserX } from 'lucide-react'
 
 // ─── Pamphlet-derived palette ───────────────────────────────────────────────
 const C = {
@@ -247,7 +247,8 @@ export default async function LandingPage() {
                 Daftarkan tempatmu. Pelanggan dengan selera yang sama bisa saling terhubung — gratis, tanpa ribet.
               </p>
               <a
-                href="mailto:inovasoftsolution@gmail.com?subject=Daftar%20Coffee%20Shop%20Social%20Coff%C3%A9"
+                href="https://wa.me/6282333583188?text=Halo%2C%20saya%20ingin%20daftarkan%20coffee%20shop%20ke%20Social%20Coff%C3%A9"
+                target="_blank" rel="noopener noreferrer"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   background: C.rose, color: C.white,
@@ -256,8 +257,8 @@ export default async function LandingPage() {
                   boxShadow: `0 4px 14px rgba(197,122,110,0.35)`,
                 }}
               >
-                <Mail size={15} strokeWidth={2} />
-                Hubungi kami
+                <MessageCircle size={15} strokeWidth={2} />
+                Chat via WhatsApp
               </a>
             </div>
           </div>
@@ -289,7 +290,8 @@ export default async function LandingPage() {
             {/* Links */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
               <a
-                href="mailto:inovasoftsolution@gmail.com?subject=Daftar%20Coffee%20Shop%20Social%20Coff%C3%A9"
+                href="https://wa.me/6282333583188?text=Halo%2C%20saya%20ingin%20daftarkan%20coffee%20shop%20ke%20Social%20Coff%C3%A9"
+                target="_blank" rel="noopener noreferrer"
                 style={{ fontSize: 13, color: C.espresso, textDecoration: 'none', fontWeight: 500 }}
               >
                 Daftarkan coffee shop kamu →

@@ -59,7 +59,7 @@ export default function CoffeeMap({ shops }: { shops: ShopPin[] }) {
         })
 
       shops.forEach((shop) => {
-        L.marker([shop.latitude, shop.longitude], { icon: pin('#c06c2e') })
+        L.marker([shop.latitude, shop.longitude], { icon: pin('#C57A6E') })
           .addTo(map)
           .bindPopup(
             `<div style="font-family:system-ui,sans-serif;min-width:160px;">

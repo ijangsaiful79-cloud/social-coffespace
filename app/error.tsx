@@ -18,7 +18,7 @@ export default function GlobalError({
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="text-center max-w-sm">
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-          style={{ background: '#c06c2e', boxShadow: '0 4px 16px 0 rgba(192, 108, 46, 0.25)' }}>
+          style={{ background: 'var(--primary)', boxShadow: '0 4px 16px 0 rgba(197, 122, 110, 0.25)' }}>
           <Coffee size={24} strokeWidth={2} color="white" />
         </div>
         <h2 className="text-lg font-semibold mb-2">Ups, ada yang salah</h2>

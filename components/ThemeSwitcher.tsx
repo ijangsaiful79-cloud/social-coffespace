@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes'
 import { Sun, Moon, Monitor, X } from 'lucide-react'
 
 const ACCENTS = [
-  { key: 'kopi', label: 'Kopi', color: '#c06c2e' },
+  { key: 'kopi', label: 'Kopi', color: '#C57A6E' },
   { key: 'rose', label: 'Mawar', color: '#c04868' },
   { key: 'sage', label: 'Sage', color: '#4a7c6e' },
 ] as const

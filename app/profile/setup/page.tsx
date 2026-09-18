@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { UserRound } from 'lucide-react'
 import type { Gender } from '@/types'
+import InterestPicker from '@/components/InterestPicker'
 
 const GENDERS: { value: Gender; label: string }[] = [
   { value: 'female', label: 'Cewek' },
@@ -25,6 +26,7 @@ function ProfileSetupForm() {
   const [instagram, setInstagram] = useState('')
   const [tiktok, setTiktok] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
+  const [interests, setInterests] = useState<string[]>([])
   const [chatEnabled, setChatEnabled] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -48,6 +50,7 @@ function ProfileSetupForm() {
       age: age ? parseInt(age) : null,
       gender,
       bio: bio.trim() || null,
+      interests: interests.length > 0 ? interests : null,
       instagram: instagram.trim() || null,
       tiktok: tiktok.trim() || null,
       whatsapp: whatsapp.trim() || null,
@@ -70,8 +73,8 @@ function ProfileSetupForm() {
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
             style={{
-              background: '#c06c2e',
-              boxShadow: '0 4px 16px 0 rgba(192, 108, 46, 0.25)',
+              background: 'var(--primary)',
+              boxShadow: '0 4px 16px 0 rgba(197, 122, 110, 0.25)',
             }}
           >
             <UserRound size={26} strokeWidth={2} color="white" />
@@ -134,6 +137,10 @@ function ProfileSetupForm() {
               className="w-full px-4 py-3 rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 transition resize-none text-sm"
             />
             <p className="text-xs text-muted-foreground text-right mt-1">{bio.length}/150</p>
+          </div>
+
+          <div className="border border-border rounded-xl p-4">
+            <InterestPicker selected={interests} onChange={setInterests} />
           </div>
 
           <div className="border border-border rounded-xl p-4 space-y-3">

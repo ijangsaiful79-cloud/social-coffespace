@@ -5,6 +5,20 @@ import { useRouter } from 'next/navigation'
 import LocationPicker from '@/components/admin/LocationPicker'
 import LogoUploader from '@/components/admin/LogoUploader'
 
+type Plan = 'starter' | 'business' | 'pro'
+
+const PLANS: { key: Plan; label: string; nfc: number }[] = [
+  { key: 'starter',  label: 'Starter',  nfc: 5  },
+  { key: 'business', label: 'Business', nfc: 10 },
+  { key: 'pro',      label: 'Pro',      nfc: 20 },
+]
+
+const PLAN_STYLE: Record<Plan, string> = {
+  starter:  'border-border bg-muted text-foreground',
+  business: 'border-primary bg-primary/5 text-primary',
+  pro:      'border-amber-400 bg-amber-50 text-amber-700',
+}
+
 interface Props { params: Promise<{ id: string }> }
 
 export default function EditCoffeeShopPage({ params }: Props) {
@@ -17,6 +31,9 @@ export default function EditCoffeeShopPage({ params }: Props) {
   const [lng, setLng] = useState<number | null>(null)
   const [radius, setRadius] = useState('100')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [plan, setPlan] = useState<Plan>('starter')
+  const [expiresAt, setExpiresAt] = useState('')
+  const [ownerContact, setOwnerContact] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,6 +48,9 @@ export default function EditCoffeeShopPage({ params }: Props) {
         setLng(shop.longitude)
         setRadius(String(shop.radius_meter))
         setLogoUrl(shop.logo_url ?? null)
+        setPlan((shop.plan ?? 'starter') as Plan)
+        setExpiresAt(shop.expires_at ? shop.expires_at.split('T')[0] : '')
+        setOwnerContact(shop.owner_contact ?? '')
         setLoading(false)
       })
   }, [id])
@@ -51,6 +71,9 @@ export default function EditCoffeeShopPage({ params }: Props) {
         longitude: lng,
         radius_meter: parseInt(radius),
         logo_url: logoUrl || null,
+        plan,
+        expires_at: expiresAt || null,
+        owner_contact: ownerContact.trim() || null,
       }),
     })
 
@@ -71,37 +94,71 @@ export default function EditCoffeeShopPage({ params }: Props) {
     <div className="max-w-lg">
       <h1 className="text-2xl font-bold mb-6">Edit Coffee Shop</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-5 bg-card border border-border rounded-2xl p-6">
-        <div>
-          <label className="block text-sm font-medium mb-1">Nama <span className="text-red-400">*</span></label>
-          <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+      <form onSubmit={handleSubmit} className="space-y-5">
+
+        {/* Plan selector */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-sm font-semibold mb-3">Paket</p>
+          <div className="grid grid-cols-3 gap-2">
+            {PLANS.map((p) => (
+              <button key={p.key} type="button" onClick={() => setPlan(p.key)}
+                className={`rounded-xl border-2 p-3 text-left transition ${
+                  plan === p.key ? PLAN_STYLE[p.key] : 'border-border hover:bg-muted/50 text-muted-foreground'
+                }`}>
+                <p className="text-xs font-bold">{p.label}</p>
+                <p className="text-[10px] mt-0.5">{p.nfc} NFC Card</p>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Alamat <span className="text-red-400">*</span></label>
-          <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
-        </div>
+        {/* Data shop */}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+          <p className="text-sm font-semibold">Data Coffee Shop</p>
 
-        <LogoUploader currentLogoUrl={logoUrl} onUpload={(url) => setLogoUrl(url || null)} />
+          <div>
+            <label className="block text-sm font-medium mb-1">Nama <span className="text-red-400">*</span></label>
+            <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+          </div>
 
-        <LocationPicker
-          lat={lat}
-          lng={lng}
-          onChange={(newLat, newLng) => { setLat(newLat); setLng(newLng) }}
-        />
+          <div>
+            <label className="block text-sm font-medium mb-1">Alamat <span className="text-red-400">*</span></label>
+            <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+          </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Radius GPS (meter)</label>
-          <input type="number" required min={50} max={500} value={radius} onChange={(e) => setRadius(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
-          <p className="text-xs text-muted-foreground mt-1">Jarak maksimal dari coffee shop agar pengguna bisa check-in (50–500m)</p>
+          <div>
+            <label className="block text-sm font-medium mb-1">Kontak Pemilik</label>
+            <input type="text" value={ownerContact} onChange={(e) => setOwnerContact(e.target.value)}
+              placeholder="Nama / No. WA pemilik"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Tanggal Akses Berakhir</label>
+            <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+          </div>
+
+          {(plan === 'business' || plan === 'pro') && (
+            <LogoUploader currentLogoUrl={logoUrl} onUpload={(url) => setLogoUrl(url || null)} />
+          )}
+
+          <LocationPicker lat={lat} lng={lng}
+            onChange={(newLat, newLng) => { setLat(newLat); setLng(newLng) }} />
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Radius GPS (meter)</label>
+            <input type="number" required min={50} max={500} value={radius}
+              onChange={(e) => setRadius(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
 
-        <div className="flex gap-3 pt-2">
+        <div className="flex gap-3">
           <button type="button" onClick={() => router.back()}
             className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">
             Batal
