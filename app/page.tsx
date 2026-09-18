@@ -3,57 +3,15 @@ import { createAdminClient } from '@/lib/supabase/server'
 import SessionRedirect from '@/components/landing/SessionRedirect'
 import MapWrapper from '@/components/landing/MapWrapper'
 import type { ShopPin } from '@/components/landing/CoffeeMap'
-import {
-  Coffee, QrCode, Users, MessageCircle,
-  MapPin, Shield, EyeOff, Zap, Bell, UserX, Mail,
-} from 'lucide-react'
+import { Coffee, Shield, EyeOff, Zap, MessageCircle, Bell, UserX, Mail } from 'lucide-react'
 
 const FEATURES = [
-  {
-    icon: Shield,
-    title: 'GPS Verified',
-    desc: 'Kamu cuma bisa muncul kalau beneran ada di sana. No faking, no cheating.',
-  },
-  {
-    icon: EyeOff,
-    title: 'Mode Anonim',
-    desc: 'Anonim atau profil lengkap — sepenuhnya pilihan kamu, bisa diganti kapan saja.',
-  },
-  {
-    icon: Zap,
-    title: 'Real-time',
-    desc: 'List update langsung begitu seseorang datang atau pergi dari coffee shop.',
-  },
-  {
-    icon: MessageCircle,
-    title: 'Chat Langsung',
-    desc: 'Say hi tanpa perlu share nomor atau sosmed dulu. Ngobrol dulu, lanjut nanti.',
-  },
-  {
-    icon: Bell,
-    title: 'Notifikasi Push',
-    desc: 'Ada yang say hi? Kamu langsung tahu — meski layar sudah terkunci.',
-  },
-  {
-    icon: UserX,
-    title: 'Sesi Berbatas',
-    desc: 'Sesi berakhir otomatis. Nggak ada jejak yang tersisa setelah kamu pergi.',
-  },
-]
-
-const WHY = [
-  {
-    title: 'Cuma yang ada di sana.',
-    desc: 'GPS diverifikasi. Nggak ada yang bisa join dari rumah atau pura-pura ada.',
-  },
-  {
-    title: 'Lihat orangnya dulu.',
-    desc: 'Kamu sudah tahu mereka ada di sana sebelum say hi. Bukan swipe-swipe nggak jelas.',
-  },
-  {
-    title: 'Privasi dari awal.',
-    desc: 'Anonim, sesi berbatas, nggak ada data yang dikumpulin lebih dari yang perlu.',
-  },
+  { icon: Shield,        title: 'GPS Verified',      desc: 'Kamu cuma bisa muncul kalau beneran ada di sana. No faking.' },
+  { icon: EyeOff,        title: 'Mode Anonim',        desc: 'Anonim atau profil lengkap — pilihan kamu, ganti kapan saja.' },
+  { icon: Zap,           title: 'Real-time',           desc: 'List update langsung waktu seseorang datang atau pergi.' },
+  { icon: MessageCircle, title: 'Chat Langsung',       desc: 'Say hi tanpa share nomor dulu. Ngobrol dulu, lanjut nanti.' },
+  { icon: Bell,          title: 'Notifikasi Push',     desc: 'Ada yang say hi? Langsung tahu — meski layar sudah terkunci.' },
+  { icon: UserX,         title: 'Sesi Berbatas',       desc: 'Sesi berakhir otomatis. Nggak ada jejak setelah kamu pergi.' },
 ]
 
 async function getShops(): Promise<ShopPin[]> {
@@ -74,68 +32,88 @@ export default async function LandingPage() {
   const shops = await getShops()
 
   return (
-    <div className="min-h-screen bg-white text-foreground">
+    <div style={{ minHeight: '100vh', background: '#ffffff', color: '#1c1917' }}>
       <SessionRedirect />
 
       {/* Nav */}
-      <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-border">
-        <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#c06c2e' }}>
+      <nav style={{
+        position: 'sticky', top: 0, zIndex: 40,
+        background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid #e4e4e7',
+      }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 20px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: '#c06c2e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Coffee size={15} strokeWidth={2} color="white" />
             </div>
-            <span className="font-display text-base font-bold" style={{ color: '#c06c2e' }}>
+            <span style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 16, fontWeight: 700, color: '#c06c2e' }}>
               Social Coffé
             </span>
           </div>
-          <a href="#partner" className="text-sm font-medium text-muted-foreground hover:text-foreground transition">
+          <a href="#partner" style={{ fontSize: 13, fontWeight: 500, color: '#71717a', textDecoration: 'none' }}>
             Untuk coffee shop
           </a>
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="bg-white">
-        <div className="max-w-5xl mx-auto px-5 pt-24 pb-28 text-center">
+      <section style={{ background: '#ffffff' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '96px 20px 104px', textAlign: 'center' }}>
+
           {shops.length > 0 && (
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold mb-8 bg-secondary text-secondary-foreground border border-orange-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0" />
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              background: '#fff7ed', border: '1px solid #fed7aa',
+              borderRadius: 100, padding: '6px 14px',
+              fontSize: 12, fontWeight: 600, color: '#c06c2e',
+              marginBottom: 32,
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', flexShrink: 0 }} />
               {shops.length} coffee shop aktif
             </div>
           )}
 
-          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl leading-tight mb-5">
-            Kenalan di coffee&nbsp;shop.
-            <br />
-            <span style={{ color: '#c06c2e' }}>Beneran, bukan di DM.</span>
-          </h1>
+          <div style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 'clamp(2.4rem, 6vw, 3.8rem)', lineHeight: 1.15, color: '#1c1917', marginBottom: 6 }}>
+            Kenalan di coffee shop.
+          </div>
+          <div style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 'clamp(2.4rem, 6vw, 3.8rem)', lineHeight: 1.15, color: '#c06c2e', marginBottom: 24 }}>
+            Beneran, bukan di DM.
+          </div>
 
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto leading-relaxed mb-12">
-            Social Coffé nunjukin siapa aja yang lagi ada di coffee shop yang sama —
-            biar kamu bisa say hi tanpa awkward.
+          <p style={{ color: '#71717a', fontSize: 17, lineHeight: 1.65, maxWidth: 460, margin: '0 auto 44px' }}>
+            Social Coffé nunjukin siapa aja yang lagi ada di coffee shop yang sama — biar kamu bisa say hi tanpa awkward.
           </p>
 
-          {/* 3 steps */}
-          <div className="inline-flex items-stretch justify-center gap-3 sm:gap-4 mb-14 flex-wrap">
+          {/* Steps — text only, no dark cards */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 44 }}>
             {[
-              { icon: QrCode, label: 'Scan QR di meja' },
-              { icon: Users, label: 'Lihat siapa ada di sini' },
-              { icon: MessageCircle, label: 'Say hi dan ngobrol' },
-            ].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex flex-col items-center gap-2.5 px-4 py-3.5 rounded-2xl bg-secondary border border-orange-100 min-w-[100px] max-w-[120px]">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#c06c2e' }}>
-                  <Icon size={18} strokeWidth={1.75} color="white" />
+              { n: '1', label: 'Scan QR di meja' },
+              { n: '2', label: 'Lihat siapa ada di sini' },
+              { n: '3', label: 'Say hi dan ngobrol' },
+            ].map(({ n, label }, i) => (
+              <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    width: 26, height: 26, borderRadius: '50%',
+                    background: '#c06c2e', color: '#ffffff',
+                    fontSize: 12, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>{n}</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: '#3f3f46' }}>{label}</span>
                 </div>
-                <span className="text-xs font-semibold text-foreground/70 text-center leading-tight">
-                  {label}
-                </span>
+                {i < 2 && <span style={{ color: '#d4d4d8', fontSize: 16 }}>→</span>}
               </div>
             ))}
           </div>
 
           <a
             href="#lokasi"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition active:scale-[0.98]"
+            style={{
+              display: 'inline-flex', alignItems: 'center',
+              background: '#c06c2e', color: '#ffffff',
+              padding: '12px 28px', borderRadius: 12,
+              fontWeight: 600, fontSize: 14, textDecoration: 'none',
+            }}
           >
             Lihat coffee shop bergabung
           </a>
@@ -143,33 +121,30 @@ export default async function LandingPage() {
       </section>
 
       {/* Why */}
-      <section style={{ background: '#f9f9f9' }}>
-        <div className="max-w-5xl mx-auto px-5 py-24">
-          <div className="max-w-2xl mb-14">
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#c06c2e' }}>
+      <section style={{ background: '#fafafa', borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '88px 20px' }}>
+          <div style={{ marginBottom: 56 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#c06c2e', marginBottom: 12 }}>
               Kenapa Social Coffé
             </p>
-            <h2 className="font-display text-3xl md:text-4xl leading-snug">
+            <div style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', lineHeight: 1.2, color: '#1c1917' }}>
               Bukan dating app.{' '}
-              <span className="text-muted-foreground">Bukan social media.</span>
-            </h2>
+              <span style={{ color: '#a1a1aa' }}>Bukan social media.</span>
+            </div>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-5">
-            {WHY.map(({ title, desc }, i) => (
-              <div
-                key={title}
-                className="rounded-2xl p-6 bg-white border border-border"
-                style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.06)' }}
-              >
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center mb-4 font-bold text-sm text-white"
-                  style={{ background: '#c06c2e' }}
-                >
-                  {i + 1}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+            {[
+              { n: 1, title: 'Cuma yang ada di sana.', desc: 'GPS diverifikasi. Nggak ada yang bisa join dari rumah atau pura-pura ada.' },
+              { n: 2, title: 'Lihat orangnya dulu.', desc: 'Kamu sudah tahu mereka ada di sana sebelum say hi. Bukan swipe-swipe nggak jelas.' },
+              { n: 3, title: 'Privasi dari awal.', desc: 'Anonim, sesi berbatas, nggak ada data yang dikumpulin lebih dari yang perlu.' },
+            ].map(({ n, title, desc }) => (
+              <div key={n} style={{ background: '#ffffff', border: '1px solid #e4e4e7', borderRadius: 20, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#c06c2e', color: '#ffffff', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  {n}
                 </div>
-                <h3 className="font-semibold text-base mb-2">{title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+                <div style={{ fontWeight: 600, fontSize: 15, color: '#1c1917', marginBottom: 8 }}>{title}</div>
+                <div style={{ fontSize: 14, color: '#71717a', lineHeight: 1.6 }}>{desc}</div>
               </div>
             ))}
           </div>
@@ -177,52 +152,45 @@ export default async function LandingPage() {
       </section>
 
       {/* Lokasi */}
-      <section id="lokasi" className="bg-white">
-        <div className="max-w-5xl mx-auto px-5 py-24">
-          <div className="mb-10">
-            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#c06c2e' }}>
+      <section id="lokasi" style={{ background: '#ffffff' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '88px 20px' }}>
+          <div style={{ marginBottom: 40 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#c06c2e', marginBottom: 10 }}>
               Jaringan kami
             </p>
-            <h2 className="font-display text-3xl md:text-4xl">
-              {shops.length > 0
-                ? `${shops.length} coffee shop bergabung`
-                : 'Coffee shop partner'}
-            </h2>
+            <div style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', color: '#1c1917' }}>
+              {shops.length > 0 ? `${shops.length} coffee shop bergabung` : 'Coffee shop partner'}
+            </div>
             {shops.length > 0 && (
-              <p className="text-sm text-muted-foreground mt-2">Klik marker untuk detail lokasi</p>
+              <p style={{ fontSize: 14, color: '#71717a', marginTop: 8 }}>Klik marker untuk detail lokasi</p>
             )}
           </div>
-
           <MapWrapper shops={shops} />
         </div>
       </section>
 
       {/* Fitur */}
-      <section style={{ background: '#f9f9f9' }}>
-        <div className="max-w-5xl mx-auto px-5 py-24">
-          <div className="max-w-2xl mb-14">
-            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#c06c2e' }}>
+      <section style={{ background: '#fafafa', borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '88px 20px' }}>
+          <div style={{ marginBottom: 56 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#c06c2e', marginBottom: 12 }}>
               Fitur
             </p>
-            <h2 className="font-display text-3xl md:text-4xl">
+            <div style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', lineHeight: 1.2, color: '#1c1917' }}>
               Semua yang kamu butuhkan,{' '}
-              <span className="text-muted-foreground">tidak lebih.</span>
-            </h2>
+              <span style={{ color: '#a1a1aa' }}>tidak lebih.</span>
+            </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
             {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div
-                key={title}
-                className="rounded-2xl p-5 bg-white border border-border flex flex-col gap-4"
-                style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.06)' }}
-              >
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#fff7ed' }}>
-                  <Icon size={16} strokeWidth={1.75} style={{ color: '#c06c2e' }} />
+              <div key={title} style={{ background: '#ffffff', border: '1px solid #e4e4e7', borderRadius: 20, padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon size={16} strokeWidth={1.75} color="#c06c2e" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm mb-1.5">{title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: '#1c1917', marginBottom: 6 }}>{title}</div>
+                  <div style={{ fontSize: 13, color: '#71717a', lineHeight: 1.6 }}>{desc}</div>
                 </div>
               </div>
             ))}
@@ -231,33 +199,28 @@ export default async function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section id="partner" className="bg-white">
-        <div className="max-w-5xl mx-auto px-5 py-24">
-          <div
-            className="rounded-3xl px-8 py-16 text-center overflow-hidden relative"
-            style={{ background: 'linear-gradient(135deg, #c06c2e 0%, #a8541e 100%)' }}
-          >
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: 'radial-gradient(ellipse 60% 80% at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 60%)' }}
-            />
-            <div className="relative">
-              <div
-                className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-6"
-                style={{ background: 'rgba(255,255,255,0.2)' }}
-              >
+      <section id="partner" style={{ background: '#ffffff' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '88px 20px' }}>
+          <div style={{ background: 'linear-gradient(135deg, #c06c2e 0%, #a8541e 100%)', borderRadius: 28, padding: '64px 40px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 60% 80% at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 60%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'relative' }}>
+              <div style={{ width: 48, height: 48, borderRadius: 16, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
                 <Coffee size={22} strokeWidth={1.75} color="white" />
               </div>
-              <h2 className="font-display text-3xl md:text-4xl text-white mb-4">
+              <div style={{ fontFamily: 'var(--font-calistoga), serif', fontSize: 'clamp(1.8rem, 4vw, 2.6rem)', color: '#ffffff', marginBottom: 16 }}>
                 Punya coffee shop?
-              </h2>
-              <p className="text-white/80 text-base max-w-md mx-auto leading-relaxed mb-8">
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, maxWidth: 400, margin: '0 auto 32px', lineHeight: 1.6 }}>
                 Daftarkan tempatmu. Pelanggan dengan selera yang sama bisa saling terhubung — gratis, tanpa ribet.
               </p>
               <a
                 href="mailto:inovasoftsolution@gmail.com?subject=Daftar%20Coffee%20Shop%20Social%20Coff%C3%A9"
-                className="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl font-semibold text-sm transition hover:opacity-90 active:scale-[0.98]"
-                style={{ background: 'white', color: '#c06c2e' }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: '#ffffff', color: '#c06c2e',
+                  padding: '12px 24px', borderRadius: 12,
+                  fontWeight: 600, fontSize: 14, textDecoration: 'none',
+                }}
               >
                 <Mail size={15} strokeWidth={2} />
                 Hubungi kami
@@ -268,18 +231,18 @@ export default async function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-white">
-        <div className="max-w-5xl mx-auto px-5 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: '#c06c2e' }}>
+      <footer style={{ borderTop: '1px solid #e4e4e7', background: '#ffffff' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 24, height: 24, borderRadius: 8, background: '#c06c2e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Coffee size={12} strokeWidth={2} color="white" />
             </div>
-            <span className="text-sm font-bold" style={{ color: '#c06c2e' }}>Social Coffé</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#c06c2e' }}>Social Coffé</span>
           </div>
-          <p className="text-xs text-muted-foreground text-center">
+          <p style={{ fontSize: 12, color: '#a1a1aa' }}>
             Terhubung, offline, bermakna. &copy; {new Date().getFullYear()}
           </p>
-          <Link href="/admin/login" className="text-xs text-muted-foreground hover:text-foreground transition">
+          <Link href="/admin/login" style={{ fontSize: 12, color: '#a1a1aa', textDecoration: 'none' }}>
             Admin
           </Link>
         </div>
