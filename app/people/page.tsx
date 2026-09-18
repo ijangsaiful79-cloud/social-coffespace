@@ -535,7 +535,7 @@ function PeopleHereList() {
   return (
     <main className="min-h-screen max-w-lg mx-auto flex flex-col">
       {/* Header */}
-      <div className="px-4 pt-6 pb-3">
+      <div className="px-4 pb-3" style={{ paddingTop: 'max(24px, env(safe-area-inset-top))' }}>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="font-display text-2xl font-bold tracking-wide" style={{ color: '#c06c2e' }}>Social Coffé</h1>
@@ -803,7 +803,7 @@ function PeopleHereList() {
 
       {/* Exit Confirm */}
       {exitConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setExitConfirm(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-[max(24px,env(safe-area-inset-bottom))]" onClick={() => setExitConfirm(false)}>
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
               <LogOut size={22} strokeWidth={2} className="text-red-500" />
@@ -822,7 +822,7 @@ function PeopleHereList() {
 
       {/* Edit Identity Modal */}
       {editOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setEditOpen(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-[max(24px,env(safe-area-inset-bottom))]" onClick={() => setEditOpen(false)}>
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-bold text-lg mb-1">Edit Profil</h2>
             <p className="text-sm text-muted-foreground mb-4">Ubah nama dan informasi kamu</p>
@@ -968,7 +968,7 @@ function PeopleHereList() {
 
       {/* Action Sheet */}
       {menuTarget && !reportOpen && !blockConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setMenuTarget(null)}>
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-[max(24px,env(safe-area-inset-bottom))]" onClick={() => setMenuTarget(null)}>
           <div className="bg-background rounded-2xl w-full max-w-sm shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-border">
               <p className="font-semibold">{menuTarget.display_name}</p>
@@ -991,7 +991,7 @@ function PeopleHereList() {
 
       {/* Report */}
       {reportOpen && menuTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => { setReportOpen(false); setMenuTarget(null) }}>
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-[max(24px,env(safe-area-inset-bottom))]" onClick={() => { setReportOpen(false); setMenuTarget(null) }}>
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-bold text-lg mb-1">Laporkan Pengguna</h2>
             <p className="text-sm text-muted-foreground mb-4">Laporan kamu bersifat anonim dan akan ditinjau admin.</p>
@@ -1019,7 +1019,7 @@ function PeopleHereList() {
 
       {/* Delete Conversation Confirm */}
       {deleteConvoId && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setDeleteConvoId(null)}>
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-[max(24px,env(safe-area-inset-bottom))]" onClick={() => setDeleteConvoId(null)}>
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
               <Trash2 size={22} strokeWidth={2} className="text-red-500" />
@@ -1038,7 +1038,7 @@ function PeopleHereList() {
 
       {/* Profile Preview */}
       {profilePreview && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setProfilePreview(null)}>
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-[max(24px,env(safe-area-inset-bottom))]" onClick={() => setProfilePreview(null)}>
           <div className="bg-background rounded-2xl w-full max-w-sm shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Top close handle */}
             <div className="flex justify-center pt-3 pb-1">
@@ -1147,7 +1147,7 @@ function PeopleHereList() {
 
       {/* Block List */}
       {blockListOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setBlockListOpen(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-[max(24px,env(safe-area-inset-bottom))]" onClick={() => setBlockListOpen(false)}>
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-lg">Daftar Blokir</h2>
@@ -1188,7 +1188,7 @@ function PeopleHereList() {
 
       {/* Block Confirm */}
       {blockConfirm && menuTarget && (
-        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => { setBlockConfirm(false); setMenuTarget(null) }}>
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-[max(24px,env(safe-area-inset-bottom))]" onClick={() => { setBlockConfirm(false); setMenuTarget(null) }}>
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
               <Ban size={22} strokeWidth={2} className="text-red-500" />

@@ -340,7 +340,7 @@ export default function ChatPage({ params }: Props) {
   return (
     <main className="flex flex-col h-[100dvh] max-w-lg mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0" style={{ boxShadow: '0 1px 4px 0 rgba(0,0,0,0.05)' }}>
+      <div className="flex items-center gap-3 px-4 border-b border-border bg-card shrink-0" style={{ boxShadow: '0 1px 4px 0 rgba(0,0,0,0.05)', paddingTop: 'max(12px, env(safe-area-inset-top))', paddingBottom: 12 }}>
         <button onClick={() => router.back()} className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition shrink-0">
           <ArrowLeft size={18} strokeWidth={2} />
         </button>
@@ -360,7 +360,7 @@ export default function ChatPage({ params }: Props) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 scroll-touch">
         {messages.length === 0 && (
           <div className="text-center py-12">
             <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
@@ -406,19 +406,23 @@ export default function ChatPage({ params }: Props) {
 
       {/* Input */}
       {isBlocked ? (
-        <div className="px-4 py-4 border-t border-border bg-card shrink-0 flex items-center justify-center gap-2">
+        <div className="px-4 py-4 border-t border-border bg-card shrink-0 flex items-center justify-center gap-2"
+          style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
           <Ban size={14} strokeWidth={2} className="text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Kamu telah memblokir pengguna ini</p>
         </div>
       ) : (
-        <form onSubmit={sendMessage} className="flex items-center gap-2 px-4 py-3 border-t border-border bg-card shrink-0">
+        <form onSubmit={sendMessage}
+          className="flex items-center gap-2 px-4 pt-3 border-t border-border bg-card shrink-0"
+          style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
           <input
             ref={inputRef}
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Ketik pesan..."
-            className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+            style={{ fontSize: 16 }}
           />
           <button
             type="submit"
