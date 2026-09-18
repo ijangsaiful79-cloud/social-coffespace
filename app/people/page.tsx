@@ -8,10 +8,12 @@ import type { Profile, Message } from '@/types'
 import { useLocationGuard } from '@/lib/hooks/useLocationGuard'
 import LocationExitAlert from '@/components/LocationExitAlert'
 import PushPromptBanner from '@/components/PushPromptBanner'
+import { isWithinRadius } from '@/lib/utils/distance'
 import {
   Users, MessageSquare, LogOut, Pencil, MoreHorizontal, Trash2,
-  Flag, Ban, X, Coffee, EyeOff, Phone, UserRound,
+  Flag, Ban, X, Coffee, EyeOff, Phone, UserRound, Clock, Camera, Palette,
 } from 'lucide-react'
+import ThemeSwitcher from '@/components/ThemeSwitcher'
 
 interface PersonHere extends Profile { session_id: string }
 
@@ -29,8 +31,14 @@ const GENDER_LABEL: Record<string, string> = {
 const REPORT_REASONS = ['Spam', 'Konten tidak pantas', 'Pelecehan atau intimidasi', 'Profil palsu', 'Lainnya']
 
 const AVATAR_GRADIENTS = [
-  ['#c8763a', '#e8a265'], ['#7c6aad', '#a892d4'], ['#2d9e6b', '#5cc99a'],
-  ['#c85c5c', '#e88585'], ['#4a7fc1', '#7aaee8'], ['#c88a3a', '#e8b865'], ['#5a8a6a', '#83b890'],
+  ['#c06c2e', '#e09260'],  // coffee amber
+  ['#b55c6e', '#d98496'],  // dusty rose
+  ['#7c6aad', '#a892d4'],  // soft violet
+  ['#4a7fc1', '#7aaee8'],  // periwinkle
+  ['#2d9e6b', '#5cc99a'],  // sage green
+  ['#956b5a', '#c49080'],  // warm mauve
+  ['#7a5c8a', '#a885bd'],  // soft plum
+  ['#c88a3a', '#e8b865'],  // golden amber
 ]
 
 function getGradient(str: string) {
@@ -124,6 +132,11 @@ function PeopleHereList() {
   const [exitLoading, setExitLoading] = useState(false)
   const [locationExitLoading, setLocationExitLoading] = useState(false)
   const [unreadTotal, setUnreadTotal] = useState(0)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<Date | null>(null)
+  const [timeLeft, setTimeLeft] = useState<string>('')
+  const [extendLoading, setExtendLoading] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false)
@@ -133,7 +146,9 @@ function PeopleHereList() {
   const [editGender, setEditGender] = useState<'male' | 'female' | 'other' | 'prefer_not_to_say'>('prefer_not_to_say')
   const [editBio, setEditBio] = useState('')
   const [editInstagram, setEditInstagram] = useState('')
+  const [editTiktok, setEditTiktok] = useState('')
   const [editWhatsapp, setEditWhatsapp] = useState('')
+  const [editChatEnabled, setEditChatEnabled] = useState(true)
   const [editSaving, setEditSaving] = useState(false)
 
   // Report & Block
@@ -147,6 +162,7 @@ function PeopleHereList() {
   const [exitConfirm, setExitConfirm] = useState(false)
   const [deleteConvoId, setDeleteConvoId] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [themeSwitcherOpen, setThemeSwitcherOpen] = useState(false)
 
   const { isOutside } = useLocationGuard({
     lat: shopCoords?.lat ?? null,
@@ -159,6 +175,7 @@ function PeopleHereList() {
   const channelRef = useRef<RealtimeChannel | null>(null)
   const msgChannelRef = useRef<RealtimeChannel | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!shopId) { router.push('/'); return }
@@ -181,6 +198,18 @@ function PeopleHereList() {
 
       const { data: myProf } = await supabase.from('profiles').select('*').eq('user_id', uid).single()
       if (myProf) setMyProfile(myProf as unknown as Profile)
+
+      const { data: mySession } = await supabase
+        .from('coffee_shop_sessions')
+        .select('id, expires_at')
+        .eq('user_id', uid)
+        .eq('coffee_shop_id', shopId)
+        .eq('status', 'active')
+        .single()
+      if (mySession) {
+        setSessionId(mySession.id)
+        setSessionExpiresAt(new Date(mySession.expires_at))
+      }
 
       await fetchPeople(uid, supabase)
       await fetchInbox(uid, supabase)
@@ -220,6 +249,62 @@ function PeopleHereList() {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
     }
   }, [shopId])
+
+  useEffect(() => {
+    if (!sessionExpiresAt) return
+    function tick() {
+      const diff = sessionExpiresAt!.getTime() - Date.now()
+      if (diff <= 0) { setTimeLeft('0:00'); return }
+      const mins = Math.floor(diff / 60000)
+      const secs = Math.floor((diff % 60000) / 1000)
+      setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')}`)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [sessionExpiresAt])
+
+  async function handleExtendSession() {
+    if (!shopCoords || !sessionId) return
+    setExtendLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const ok = isWithinRadius(pos.coords.latitude, pos.coords.longitude, shopCoords.lat, shopCoords.lng, shopCoords.radius)
+        if (!ok) { showToast('Kamu sudah keluar dari area coffee shop'); setExtendLoading(false); return }
+        const supabase = createClient()
+        const newExpires = new Date(Date.now() + 30 * 60 * 1000)
+        await supabase.from('coffee_shop_sessions')
+          .update({ expires_at: newExpires.toISOString(), last_active_at: new Date().toISOString() })
+          .eq('id', sessionId)
+        setSessionExpiresAt(newExpires)
+        setExtendLoading(false)
+        showToast('Sesi diperpanjang 30 menit!')
+      },
+      () => { showToast('Gagal akses lokasi. Coba lagi.'); setExtendLoading(false) },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    )
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !currentUserId) return
+    if (file.size > 2 * 1024 * 1024) { showToast('Foto terlalu besar. Maksimal 2MB.'); return }
+    setAvatarUploading(true)
+    const supabase = createClient()
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const path = `${currentUserId}/avatar.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (uploadError) { showToast('Gagal upload foto. Pastikan bucket avatars sudah dibuat.'); setAvatarUploading(false); return }
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+    const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`
+    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('user_id', currentUserId)
+    setMyProfile((prev) => prev ? { ...prev, avatar_url: publicUrl } : prev)
+    setAvatarUploading(false)
+    showToast('Foto profil diperbarui!')
+    if (avatarInputRef.current) avatarInputRef.current.value = ''
+  }
 
   async function fetchPeople(uid: string, supabase: ReturnType<typeof createClient>) {
     const { data: myBlocks } = await supabase.from('blocks').select('blocked_user_id').eq('user_id', uid)
@@ -298,7 +383,9 @@ function PeopleHereList() {
       setEditGender(myProfile.gender ?? 'prefer_not_to_say')
       setEditBio(myProfile.bio ?? '')
       setEditInstagram(myProfile.instagram ?? '')
+      setEditTiktok(myProfile.tiktok ?? '')
       setEditWhatsapp(myProfile.whatsapp ?? '')
+      setEditChatEnabled(myProfile.chat_enabled ?? true)
     }
     setEditOpen(true)
   }
@@ -361,12 +448,13 @@ function PeopleHereList() {
       user_id: currentUserId,
       display_name: name,
       is_anonymous: editMode === 'anonymous',
-      chat_enabled: true,
+      chat_enabled: editChatEnabled,
       ...(editMode === 'full' && {
         age: editAge ? parseInt(editAge) : null,
         gender: editGender,
         bio: editBio.trim() || null,
         instagram: editInstagram.trim() || null,
+        tiktok: editTiktok.trim() || null,
         whatsapp: editWhatsapp.trim() || null,
       }),
     }
@@ -423,17 +511,38 @@ function PeopleHereList() {
       <div className="px-4 pt-6 pb-3">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="font-display text-2xl font-bold tracking-wide" style={{ color: '#c8763a' }}>Social Coffé</h1>
+            <h1 className="font-display text-2xl font-bold tracking-wide" style={{ color: '#c06c2e' }}>Social Coffé</h1>
             <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
               <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
               {shopName}
             </p>
+            {timeLeft && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`flex items-center gap-1 text-xs font-medium tabular-nums ${
+                  sessionExpiresAt && sessionExpiresAt.getTime() - Date.now() < 5 * 60 * 1000
+                    ? 'text-red-500' : 'text-muted-foreground'
+                }`}>
+                  <Clock size={11} strokeWidth={2} />
+                  {timeLeft}
+                </span>
+                <button
+                  onClick={handleExtendSession}
+                  disabled={extendLoading}
+                  className="text-xs font-semibold text-primary hover:underline disabled:opacity-50 transition"
+                >
+                  {extendLoading ? 'Mengecek...' : 'Perpanjang'}
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={openEdit} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm border border-border hover:bg-muted transition min-h-[44px]">
               <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={myProfile?.is_anonymous ?? true} size={26} />
               <span className="font-medium truncate max-w-[70px]">{myProfile?.display_name ?? 'Kamu'}</span>
               <Pencil size={13} strokeWidth={2} className="text-muted-foreground" />
+            </button>
+            <button onClick={() => setThemeSwitcherOpen(true)} className="w-11 h-11 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-muted transition" title="Tampilan">
+              <Palette size={16} strokeWidth={2} />
             </button>
             <button onClick={() => setExitConfirm(true)} className="w-11 h-11 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition" title="Keluar">
               <LogOut size={16} strokeWidth={2} />
@@ -445,24 +554,26 @@ function PeopleHereList() {
         <div className="flex gap-1 bg-muted/50 rounded-xl p-1">
           <button
             onClick={() => setActiveTab('people')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition min-h-[44px] ${activeTab === 'people' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition min-h-[44px] ${activeTab === 'people' ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            style={activeTab === 'people' ? { boxShadow: '0 1px 4px 0 rgba(0,0,0,0.08)' } : {}}
           >
             <Users size={16} strokeWidth={2} />
             <span>Di Sini</span>
             {people.length > 0 && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === 'people' ? 'bg-amber-100 text-amber-700' : 'bg-muted text-muted-foreground'}`}>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === 'people' ? 'bg-secondary text-primary' : 'bg-muted text-muted-foreground'}`}>
                 {people.length}
               </span>
             )}
           </button>
           <button
             onClick={() => setActiveTab('inbox')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition min-h-[44px] ${activeTab === 'inbox' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition min-h-[44px] ${activeTab === 'inbox' ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            style={activeTab === 'inbox' ? { boxShadow: '0 1px 4px 0 rgba(0,0,0,0.08)' } : {}}
           >
             <MessageSquare size={16} strokeWidth={2} />
             <span>Inbox</span>
             {unreadTotal > 0 && (
-              <span className="text-xs px-1.5 py-0.5 rounded-full font-bold bg-red-500 text-white">
+              <span className="text-xs px-1.5 py-0.5 rounded-full font-bold bg-primary text-primary-foreground">
                 {unreadTotal > 9 ? '9+' : unreadTotal}
               </span>
             )}
@@ -496,7 +607,7 @@ function PeopleHereList() {
                 { key: 'other', label: 'Lainnya' },
               ] as const).map(({ key, label }) => (
                 <button key={key} onClick={() => setGenderFilter(key)}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${genderFilter === key ? 'bg-amber-600 text-white border-amber-600' : 'bg-background border-border text-muted-foreground hover:bg-muted'}`}>
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition ${genderFilter === key ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:bg-muted'}`}>
                   {label}
                 </button>
               ))}
@@ -527,23 +638,28 @@ function PeopleHereList() {
                   const isAnon = person.is_anonymous
                   const isLoading = sayingHiTo.has(person.user_id)
                   return (
-                    <div key={person.id} className="rounded-2xl p-4 flex items-center gap-3 border transition"
-                      style={{ backgroundColor: isAnon ? '#f3f4f6' : '#ffffff', borderColor: isAnon ? '#d1d5db' : '#e5ddd5', borderStyle: isAnon ? 'dashed' : 'solid' }}>
+                    <div key={person.id} className="rounded-2xl p-4 flex items-center gap-3 border transition-all duration-200"
+                      style={{
+                        backgroundColor: isAnon ? '#f6f4f2' : '#ffffff',
+                        borderColor: isAnon ? '#d9d0c8' : '#e4d4c6',
+                        borderStyle: isAnon ? 'dashed' : 'solid',
+                        boxShadow: isAnon ? 'none' : '0 1px 4px 0 rgba(0,0,0,0.06)',
+                      }}>
                       <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={48} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="font-semibold truncate" style={{ color: isAnon ? '#78716c' : '#1a1209' }}>{person.display_name}</p>
+                          <p className={`font-semibold truncate ${isAnon ? 'text-muted-foreground' : 'text-foreground'}`}>{person.display_name}</p>
                           {!isAnon && person.gender && GENDER_LABEL[person.gender] && (
                             <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{GENDER_LABEL[person.gender]}</span>
                           )}
                           {isAnon
-                            ? <span className="text-xs text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded-md font-medium">anonim</span>
-                            : <span className="text-xs text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md font-medium border border-amber-100">profil lengkap</span>
+                            ? <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md font-medium">anonim</span>
+                            : <span className="text-xs text-primary bg-secondary px-1.5 py-0.5 rounded-md font-medium border border-border">profil lengkap</span>
                           }
                         </div>
                         {!isAnon
                           ? <p className="text-sm text-muted-foreground truncate mt-0.5">{[person.age ? `${person.age} yo` : '', person.bio].filter(Boolean).join(' · ')}</p>
-                          : <p className="text-xs text-stone-400 mt-0.5 flex items-center gap-1"><EyeOff size={11} strokeWidth={2} />Identitas disembunyikan</p>
+                          : <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><EyeOff size={11} strokeWidth={2} />Identitas disembunyikan</p>
                         }
                         {!isAnon && (person.instagram || person.whatsapp) && (
                           <div className="flex items-center gap-1.5 mt-1">
@@ -557,14 +673,13 @@ function PeopleHereList() {
                           <button
                             onClick={() => handleSayHi(person.user_id)}
                             disabled={isLoading}
-                            className="w-10 h-10 rounded-xl flex items-center justify-center transition disabled:opacity-50"
-                            style={{ backgroundColor: isLoading ? '#d9a07e' : '#c8763a' }}
+                            className="w-11 h-11 rounded-xl flex items-center justify-center bg-primary hover:opacity-90 active:scale-95 transition disabled:opacity-50"
                             title="Mulai chat"
                           >
                             <MessageSquare size={17} color="#fff" strokeWidth={2} />
                           </button>
                         )}
-                        <button onClick={() => setMenuTarget(person)} className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted transition">
+                        <button onClick={() => setMenuTarget(person)} className="w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:bg-muted transition">
                           <MoreHorizontal size={16} strokeWidth={2} />
                         </button>
                       </div>
@@ -599,7 +714,7 @@ function PeopleHereList() {
                 </div>
                 <p className="font-semibold mb-1">Belum ada percakapan</p>
                 <p className="text-sm text-muted-foreground">Say Hi ke seseorang untuk mulai ngobrol.</p>
-                <button onClick={() => setActiveTab('people')} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold transition min-h-[44px]" style={{ backgroundColor: '#c8763a', color: '#fff' }}>
+                <button onClick={() => setActiveTab('people')} className="mt-4 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition min-h-[44px]">
                   Lihat orang di sini
                 </button>
               </div>
@@ -611,8 +726,12 @@ function PeopleHereList() {
                   return (
                     <div
                       key={item.id}
-                      className="w-full flex items-center gap-3 p-4 rounded-2xl border transition"
-                      style={{ borderColor: hasUnread ? '#c8763a' : '#e5e7eb', backgroundColor: hasUnread ? '#fef9f5' : '#ffffff' }}
+                      className="w-full flex items-center gap-3 p-4 rounded-2xl border transition-all duration-200"
+                      style={{
+                        borderColor: hasUnread ? '#c06c2e' : '#e4d4c6',
+                        backgroundColor: hasUnread ? '#fdf5ec' : '#ffffff',
+                        boxShadow: hasUnread ? '0 2px 8px 0 rgba(192,108,46,0.10)' : '0 1px 4px 0 rgba(0,0,0,0.05)',
+                      }}
                     >
                       <button
                         onClick={() => router.push(`/chat/${item.id}`)}
@@ -638,7 +757,7 @@ function PeopleHereList() {
                               {item.lastMessage ? item.lastMessage.message : 'Belum ada pesan'}
                             </p>
                             {item.unreadCount > 0 && (
-                              <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
+                              <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
                                 {item.unreadCount > 9 ? '9+' : item.unreadCount}
                               </span>
                             )}
@@ -702,6 +821,41 @@ function PeopleHereList() {
           <div className="bg-background rounded-2xl p-6 w-full max-w-sm shadow-xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-bold text-lg mb-1">Edit Profil</h2>
             <p className="text-sm text-muted-foreground mb-4">Ubah nama dan informasi kamu</p>
+
+            {/* Avatar upload */}
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarUpload}
+            />
+            <div className="flex flex-col items-center mb-5">
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="relative group"
+                title="Ganti foto profil"
+              >
+                <Avatar
+                  name={editName || myProfile?.display_name || 'A'}
+                  avatarUrl={myProfile?.avatar_url}
+                  isAnonymous={false}
+                  size={72}
+                />
+                <div className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-primary flex items-center justify-center border-2 border-background">
+                  {avatarUploading
+                    ? <div className="w-3 h-3 border border-white/40 border-t-white rounded-full animate-spin" />
+                    : <Camera size={12} color="#fff" strokeWidth={2.5} />
+                  }
+                </div>
+              </button>
+              <p className="text-xs text-muted-foreground mt-2">
+                {avatarUploading ? 'Mengupload...' : 'Tap untuk ganti foto'}
+              </p>
+            </div>
+
             <form onSubmit={handleSaveIdentity} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">Nama / Nickname</label>
@@ -736,14 +890,15 @@ function PeopleHereList() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Gender</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {([
                         { value: 'female', label: 'Cewek' },
                         { value: 'male', label: 'Cowok' },
+                        { value: 'other', label: 'Lainnya' },
                         { value: 'prefer_not_to_say', label: 'Skip' },
                       ] as const).map(({ value, label }) => (
                         <button key={value} type="button" onClick={() => setEditGender(value)}
-                          className={`py-2 rounded-lg border text-xs font-semibold transition ${editGender === value ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
+                          className={`py-2.5 rounded-lg border text-xs font-semibold transition min-h-[40px] ${editGender === value ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}>
                           {label}
                         </button>
                       ))}
@@ -753,10 +908,16 @@ function PeopleHereList() {
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Bio</label>
                     <textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} placeholder="Cerita singkat tentang kamu..." maxLength={150} rows={2}
                       className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition resize-none" />
+                    <p className="text-xs text-muted-foreground text-right mt-0.5">{editBio.length}/150</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Instagram</label>
                     <input type="text" value={editInstagram} onChange={(e) => setEditInstagram(e.target.value)} placeholder="username (tanpa @)"
+                      className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">TikTok</label>
+                    <input type="text" value={editTiktok} onChange={(e) => setEditTiktok(e.target.value)} placeholder="username (tanpa @)"
                       className="w-full px-4 py-2.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
                   </div>
                   <div>
@@ -766,6 +927,21 @@ function PeopleHereList() {
                   </div>
                 </div>
               )}
+
+              {/* Chat toggle — selalu tampil */}
+              <div className="flex items-center justify-between border border-border rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium">Aktifkan Chat</p>
+                  <p className="text-xs text-muted-foreground">Biarkan orang lain kirim pesan ke kamu</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditChatEnabled(!editChatEnabled)}
+                  className={`w-11 h-6 rounded-full transition-colors relative shrink-0 ${editChatEnabled ? 'bg-primary' : 'bg-border'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${editChatEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
 
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setEditOpen(false)} className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition">Batal</button>
@@ -789,7 +965,7 @@ function PeopleHereList() {
               </p>
             </div>
             <button onClick={() => setReportOpen(true)} className="w-full px-5 py-4 text-left text-sm font-medium hover:bg-muted transition flex items-center gap-3 min-h-[52px]">
-              <Flag size={18} strokeWidth={1.75} className="text-amber-500" /><span>Laporkan pengguna ini</span>
+              <Flag size={18} strokeWidth={1.75} className="text-primary" /><span>Laporkan pengguna ini</span>
             </button>
             <button onClick={() => setBlockConfirm(true)} className="w-full px-5 py-4 text-left text-sm font-medium text-red-500 hover:bg-red-50 transition flex items-center gap-3 border-t border-border min-h-[52px]">
               <Ban size={18} strokeWidth={1.75} /><span>Blokir pengguna ini</span>
@@ -865,6 +1041,10 @@ function PeopleHereList() {
             </div>
           </div>
         </div>
+      )}
+
+      {themeSwitcherOpen && (
+        <ThemeSwitcher onClose={() => setThemeSwitcherOpen(false)} />
       )}
     </main>
   )

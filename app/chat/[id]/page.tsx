@@ -19,11 +19,13 @@ const REPORT_REASONS = [
 ]
 
 const AVATAR_GRADIENTS = [
-  ['#c8763a', '#e8a265'],
-  ['#7c6aad', '#a892d4'],
-  ['#2d9e6b', '#5cc99a'],
-  ['#c85c5c', '#e88585'],
-  ['#4a7fc1', '#7aaee8'],
+  ['#c06c2e', '#e09260'],  // coffee amber
+  ['#b55c6e', '#d98496'],  // dusty rose
+  ['#7c6aad', '#a892d4'],  // soft violet
+  ['#4a7fc1', '#7aaee8'],  // periwinkle
+  ['#2d9e6b', '#5cc99a'],  // sage green
+  ['#956b5a', '#c49080'],  // warm mauve
+  ['#7a5c8a', '#a885bd'],  // soft plum
 ]
 
 function getGradient(str: string) {
@@ -330,7 +332,7 @@ export default function ChatPage({ params }: Props) {
   return (
     <main className="flex flex-col h-[100dvh] max-w-lg mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0" style={{ boxShadow: '0 1px 4px 0 rgba(0,0,0,0.05)' }}>
         <button onClick={() => router.back()} className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition shrink-0">
           <ArrowLeft size={18} strokeWidth={2} />
         </button>
@@ -425,7 +427,7 @@ export default function ChatPage({ params }: Props) {
               </div>
             </div>
             <button onClick={() => { setReportOpen(true); setMenuOpen(false) }} className="w-full px-5 py-4 text-left text-sm font-medium hover:bg-muted transition flex items-center gap-3 min-h-[52px]">
-              <Flag size={17} strokeWidth={1.75} className="text-amber-500" /><span>Laporkan pengguna ini</span>
+              <Flag size={17} strokeWidth={1.75} className="text-primary" /><span>Laporkan pengguna ini</span>
             </button>
             <button onClick={() => { setBlockConfirm(true); setMenuOpen(false) }} className="w-full px-5 py-4 text-left text-sm font-medium text-red-500 hover:bg-red-50 transition flex items-center gap-3 border-t border-border min-h-[52px]">
               <Ban size={17} strokeWidth={1.75} /><span>Blokir pengguna ini</span>

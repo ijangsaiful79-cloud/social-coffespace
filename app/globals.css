@@ -1,23 +1,46 @@
 @import "tailwindcss";
 
+/* ─── Accent overrides (light) ─── */
+[data-accent="rose"] {
+  --primary: #c04868;
+  --primary-foreground: #ffffff;
+  --secondary: #fce8ef;
+  --secondary-foreground: #8b2540;
+  --ring: #c04868;
+}
+[data-accent="sage"] {
+  --primary: #4a7c6e;
+  --primary-foreground: #ffffff;
+  --secondary: #e4f0ed;
+  --secondary-foreground: #2c574c;
+  --ring: #4a7c6e;
+}
+
 :root {
-  --background: #faf8f5;
-  --foreground: #1a1209;
-  --primary: #c8763a;
+  --background: #fef9f6;
+  --foreground: #1c110a;
+  --primary: #c06c2e;
   --primary-foreground: #ffffff;
   --secondary: #f5ede3;
   --secondary-foreground: #7c4a1e;
-  --muted: #f0ebe4;
-  --muted-foreground: #78716c;
-  --border: #e8ddd3;
+  --muted: #f0ebe3;
+  --muted-foreground: #8a7468;
+  --border: #e4d4c6;
   --card: #ffffff;
-  --card-foreground: #1a1209;
+  --card-foreground: #1c110a;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
   --success: #16a34a;
   --success-foreground: #ffffff;
-  --ring: #c8763a;
-  --radius: 0.75rem;
+  --ring: #c06c2e;
+  --radius: 0.875rem;
+
+  /* Shadow scale */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 4px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+  --shadow-lg: 0 10px 24px 0 rgb(0 0 0 / 0.10), 0 4px 8px -4px rgb(0 0 0 / 0.04);
+  --shadow-xl: 0 20px 40px 0 rgb(0 0 0 / 0.12), 0 8px 16px -8px rgb(0 0 0 / 0.06);
 }
 
 @theme inline {
@@ -81,4 +104,48 @@ textarea {
 /* Font display class */
 .font-display {
   font-family: var(--font-calistoga), serif;
+}
+
+/* ─── Dark mode ─── */
+.dark {
+  --background: #18100a;
+  --foreground: #f5ede3;
+  --primary: #d4824a;
+  --primary-foreground: #ffffff;
+  --secondary: #2d1e11;
+  --secondary-foreground: #d4936e;
+  --muted: #221509;
+  --muted-foreground: #a08070;
+  --border: #3d2a1a;
+  --card: #211208;
+  --card-foreground: #f5ede3;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --ring: #d4824a;
+}
+
+/* ─── Dark accent overrides ─── */
+.dark[data-accent="rose"],
+.dark [data-accent="rose"] {
+  --primary: #d6607e;
+  --ring: #d6607e;
+  --secondary: #3a1520;
+  --secondary-foreground: #f0a0b5;
+}
+.dark[data-accent="sage"],
+.dark [data-accent="sage"] {
+  --primary: #5e9e8e;
+  --ring: #5e9e8e;
+  --secondary: #132820;
+  --secondary-foreground: #8ecfc3;
+}
+
+/* Warm ambient gradient for auth pages */
+.auth-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(ellipse 90% 55% at 50% -5%, rgba(192, 108, 46, 0.09) 0%, transparent 65%);
+  pointer-events: none;
 }

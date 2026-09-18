@@ -2,100 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-
-const s = {
-  page: {
-    display: 'flex',
-    minHeight: '100vh',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f0ebe4',
-    padding: '0 16px',
-    fontFamily: 'Arial, Helvetica, sans-serif',
-  } as React.CSSProperties,
-  wrapper: {
-    width: '100%',
-    maxWidth: '380px',
-  } as React.CSSProperties,
-  card: {
-    backgroundColor: '#ffffff',
-    border: '1px solid #e5ddd5',
-    borderRadius: '16px',
-    padding: '40px 32px',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-  } as React.CSSProperties,
-  header: {
-    textAlign: 'center',
-    marginBottom: '32px',
-  } as React.CSSProperties,
-  icon: {
-    fontSize: '40px',
-    marginBottom: '12px',
-    display: 'block',
-  } as React.CSSProperties,
-  title: {
-    fontSize: '20px',
-    fontWeight: '700',
-    color: '#1a1a1a',
-    margin: '0 0 4px',
-  } as React.CSSProperties,
-  subtitle: {
-    fontSize: '13px',
-    color: '#6b6560',
-    margin: 0,
-  } as React.CSSProperties,
-  label: {
-    display: 'block',
-    fontSize: '13px',
-    fontWeight: '500',
-    color: '#1a1a1a',
-    marginBottom: '6px',
-  } as React.CSSProperties,
-  input: {
-    width: '100%',
-    padding: '12px 16px',
-    borderRadius: '12px',
-    border: '1px solid #e5ddd5',
-    backgroundColor: '#faf8f5',
-    fontSize: '14px',
-    color: '#1a1a1a',
-    outline: 'none',
-    boxSizing: 'border-box',
-    transition: 'box-shadow 0.15s',
-  } as React.CSSProperties,
-  field: {
-    marginBottom: '16px',
-  } as React.CSSProperties,
-  errorBox: {
-    backgroundColor: '#fef2f2',
-    border: '1px solid #fecaca',
-    borderRadius: '12px',
-    padding: '12px 16px',
-    fontSize: '13px',
-    color: '#dc2626',
-    textAlign: 'center',
-    marginBottom: '16px',
-  } as React.CSSProperties,
-  btn: (loading: boolean) => ({
-    width: '100%',
-    padding: '13px',
-    borderRadius: '12px',
-    border: 'none',
-    backgroundColor: loading ? '#d9a07e' : '#c8763a',
-    color: '#ffffff',
-    fontWeight: '600',
-    fontSize: '14px',
-    cursor: loading ? 'not-allowed' : 'pointer',
-    marginTop: '8px',
-    transition: 'opacity 0.15s',
-  } as React.CSSProperties),
-  footer: {
-    textAlign: 'center',
-    fontSize: '12px',
-    color: '#6b6560',
-    marginTop: '16px',
-  } as React.CSSProperties,
-}
+import { Coffee } from 'lucide-react'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -103,15 +10,6 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-
-  function onFocus(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(200,118,58,0.25)'
-    e.currentTarget.style.borderColor = '#c8763a'
-  }
-  function onBlur(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.boxShadow = 'none'
-    e.currentTarget.style.borderColor = '#e5ddd5'
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -137,53 +35,62 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main style={s.page}>
-      <div style={s.wrapper}>
-        <div style={s.card}>
-          <div style={s.header}>
-            <span style={s.icon}>☕</span>
-            <h1 style={s.title}>Super Admin</h1>
-            <p style={s.subtitle}>Coffee Dating Management</p>
+    <main className="min-h-screen flex items-center justify-center bg-muted px-4">
+      <div className="w-full max-w-sm">
+        <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+              style={{ background: 'linear-gradient(135deg, #fdf0e6, #f5e0cc)' }}>
+              <Coffee size={22} strokeWidth={1.75} style={{ color: '#c06c2e' }} />
+            </div>
+            <h1 className="text-lg font-bold">Super Admin</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Coffee Dating Management</p>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <div style={s.field}>
-              <label style={s.label}>Email</label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Email</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@email.com"
-                style={s.input}
-                onFocus={onFocus}
-                onBlur={onBlur}
+                className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
               />
             </div>
 
-            <div style={s.field}>
-              <label style={s.label}>Password</label>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Password</label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                style={s.input}
-                onFocus={onFocus}
-                onBlur={onBlur}
+                className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
               />
             </div>
 
-            {error && <div style={s.errorBox}>{error}</div>}
+            {error && (
+              <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100">
+                <p className="text-sm text-red-600 text-center">{error}</p>
+              </div>
+            )}
 
-            <button type="submit" disabled={loading} style={s.btn(loading)}>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 active:scale-[0.99] transition disabled:opacity-60 min-h-[44px]"
+            >
               {loading ? 'Masuk...' : 'Masuk ke Dashboard'}
             </button>
           </form>
         </div>
 
-        <p style={s.footer}>Hanya untuk tim internal Coffee Dating</p>
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          Hanya untuk tim internal Coffee Dating
+        </p>
       </div>
     </main>
   )

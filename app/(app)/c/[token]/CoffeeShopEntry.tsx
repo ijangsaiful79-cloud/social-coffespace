@@ -219,9 +219,9 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: '#fdf0e6' }}>
-            <Coffee size={32} strokeWidth={1.75} style={{ color: '#c8763a' }} />
+            <Coffee size={32} strokeWidth={1.75} style={{ color: '#c06c2e' }} />
           </div>
-          <h1 className="font-display text-2xl font-bold mb-1" style={{ color: '#c8763a' }}>{shop.name}</h1>
+          <h1 className="font-display text-2xl font-bold mb-1" style={{ color: '#c06c2e' }}>{shop.name}</h1>
           <p className="text-sm text-muted-foreground">{shop.address}</p>
         </div>
 
