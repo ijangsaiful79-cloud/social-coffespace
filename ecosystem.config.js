@@ -5,7 +5,7 @@ module.exports = {
       script: '.next/standalone/server.js',
       env: {
         NODE_ENV: 'production',
-        PORT: 3001,
+        PORT: 3002,
         HOSTNAME: '0.0.0.0',
       },
       max_memory_restart: '400M',

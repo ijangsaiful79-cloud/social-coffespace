@@ -14,6 +14,11 @@ echo "→ Copying static assets to standalone..."
 cp -r .next/static .next/standalone/.next/
 cp -r public .next/standalone/ 2>/dev/null || true
 
+echo "→ Applying nginx config..."
+cp nginx.conf /etc/nginx/sites-available/dattingcoffe
+ln -sf /etc/nginx/sites-available/dattingcoffe /etc/nginx/sites-enabled/dattingcoffe
+nginx -t && systemctl reload nginx
+
 echo "→ Restarting PM2..."
 pm2 restart dattingcoffe
 
