@@ -10,7 +10,7 @@ import LocationExitAlert from '@/components/LocationExitAlert'
 import PushPromptBanner from '@/components/PushPromptBanner'
 import { isWithinRadius } from '@/lib/utils/distance'
 import {
-  Users, MessageSquare, LogOut, Pencil, MoreHorizontal, Trash2,
+  Users, MessageSquare, LogOut, MoreHorizontal, Trash2,
   Flag, Ban, X, Coffee, EyeOff, Phone, UserRound, Camera, Palette,
 } from 'lucide-react'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
@@ -593,77 +593,46 @@ function PeopleHereList() {
   )
 
   return (
-    <main className="min-h-screen max-w-lg mx-auto flex flex-col">
+    <main className="min-h-[100dvh] max-w-lg mx-auto flex flex-col">
       {/* Header */}
-      <div className="px-4 pb-3" style={{ paddingTop: 'max(24px, env(safe-area-inset-top))' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            {shopLogo ? (
-              <div className="w-10 h-10 rounded-xl overflow-hidden border border-border shrink-0">
-                <Image src={shopLogo} alt={shopName} width={40} height={40} className="object-cover w-full h-full" />
-              </div>
+      <div className="px-4 flex items-center justify-between shrink-0 border-b border-border/50"
+        style={{ paddingTop: 'max(20px, env(safe-area-inset-top))', paddingBottom: 14 }}>
+        <div className="flex items-center gap-3">
+          {shopLogo ? (
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-border shrink-0">
+              <Image src={shopLogo} alt={shopName} width={40} height={40} className="object-cover w-full h-full" />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[#F7EEE1]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-social.png" alt="Social Coffé" className="w-full h-full object-contain mix-blend-multiply" />
+            </div>
+          )}
+          <div>
+            {(shopPlan === 'business' || shopPlan === 'pro') ? (
+              <>
+                <h1 className="font-display text-base font-bold tracking-wide text-foreground leading-tight">{shopName}</h1>
+                <p className="text-xs text-muted-foreground">by Social Coffé · {people.length} orang di sini</p>
+              </>
             ) : (
-              <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[#F7EEE1]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo-social.png" alt="Social Coffé" className="w-full h-full object-contain mix-blend-multiply" />
-              </div>
-            )}
-            <div>
-              {(shopPlan === 'business' || shopPlan === 'pro') ? (
-                <>
-                  <h1 className="font-display text-xl font-bold tracking-wide text-foreground leading-tight">{shopName}</h1>
-                  <p className="text-xs text-muted-foreground mt-0.5">by Social Coffé</p>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <>
+                <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                   <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
                   {shopName}
                 </p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={openEdit} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm border border-border hover:bg-muted transition min-h-[44px]">
-              <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={myProfile?.is_anonymous ?? true} size={26} />
-              <span className="font-medium truncate max-w-[70px]">{myProfile?.display_name ?? 'Kamu'}</span>
-              <Pencil size={13} strokeWidth={2} className="text-muted-foreground" />
-            </button>
-            <button onClick={() => setThemeSwitcherOpen(true)} className="w-11 h-11 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-muted transition" title="Tampilan">
-              <Palette size={16} strokeWidth={2} />
-            </button>
-            <button onClick={() => setExitConfirm(true)} className="w-11 h-11 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition" title="Keluar">
-              <LogOut size={16} strokeWidth={2} />
-            </button>
+                <p className="text-xs text-muted-foreground">{people.length} orang di sini</p>
+              </>
+            )}
           </div>
         </div>
-
-        {/* Tab Bar */}
-        <div className="flex gap-1 bg-muted/50 rounded-xl p-1">
-          <button
-            onClick={() => setActiveTab('people')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition min-h-[44px] ${activeTab === 'people' ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            style={activeTab === 'people' ? { boxShadow: '0 1px 4px 0 rgba(0,0,0,0.08)' } : {}}
-          >
-            <Users size={16} strokeWidth={2} />
-            <span>Di Sini</span>
-            {people.length > 0 && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === 'people' ? 'bg-secondary text-primary' : 'bg-muted text-muted-foreground'}`}>
-                {people.length}
-              </span>
-            )}
+        <div className="flex items-center gap-2">
+          <button onClick={() => setThemeSwitcherOpen(true)}
+            className="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-muted transition" title="Tampilan">
+            <Palette size={15} strokeWidth={2} />
           </button>
-          <button
-            onClick={() => setActiveTab('inbox')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition min-h-[44px] ${activeTab === 'inbox' ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            style={activeTab === 'inbox' ? { boxShadow: '0 1px 4px 0 rgba(0,0,0,0.08)' } : {}}
-          >
-            <MessageSquare size={16} strokeWidth={2} />
-            <span>Inbox</span>
-            {unreadTotal > 0 && (
-              <span className="text-xs px-1.5 py-0.5 rounded-full font-bold bg-primary text-primary-foreground">
-                {unreadTotal > 9 ? '9+' : unreadTotal}
-              </span>
-            )}
+          <button onClick={() => setExitConfirm(true)}
+            className="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition" title="Keluar">
+            <LogOut size={15} strokeWidth={2} />
           </button>
         </div>
       </div>
@@ -674,7 +643,7 @@ function PeopleHereList() {
       )}
 
       {/* Tab Content */}
-      <div className="flex-1 px-4 pb-6">
+      <div className="flex-1 overflow-y-auto px-4" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 84px)' }}>
         {activeTab === 'people' && (() => {
           const filteredPeople = genderFilter === 'all'
             ? people
@@ -910,6 +879,58 @@ function PeopleHereList() {
         )}
       </div>
 
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none">
+        <div className="w-full max-w-lg pointer-events-auto border-t border-border"
+          style={{ background: 'var(--card)', backdropFilter: 'blur(16px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="flex items-end">
+
+            {/* People tab */}
+            <button onClick={() => setActiveTab('people')}
+              className={`flex-1 flex flex-col items-center gap-1 pt-3 pb-2 transition-colors ${activeTab === 'people' ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className="relative">
+                <Users size={22} strokeWidth={activeTab === 'people' ? 2.5 : 1.75} />
+                {people.length > 0 && (
+                  <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center leading-none">
+                    {people.length > 9 ? '9+' : people.length}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-semibold">Di Sini</span>
+            </button>
+
+            {/* Center Profile Button */}
+            <button onClick={openEdit} className="flex-1 flex flex-col items-center pb-2 relative">
+              <div className="w-14 h-14 rounded-full border-[3px] border-card shadow-lg overflow-hidden -mt-6"
+                style={{ boxShadow: '0 4px 16px rgba(197,122,110,0.25)' }}>
+                <Avatar
+                  name={myProfile?.display_name ?? 'A'}
+                  avatarUrl={myProfile?.avatar_url}
+                  isAnonymous={myProfile?.is_anonymous ?? true}
+                  size={56}
+                />
+              </div>
+              <span className="text-[10px] font-semibold text-muted-foreground mt-1">Profil</span>
+            </button>
+
+            {/* Inbox tab */}
+            <button onClick={() => setActiveTab('inbox')}
+              className={`flex-1 flex flex-col items-center gap-1 pt-3 pb-2 transition-colors ${activeTab === 'inbox' ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className="relative">
+                <MessageSquare size={22} strokeWidth={activeTab === 'inbox' ? 2.5 : 1.75} />
+                {unreadTotal > 0 && (
+                  <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center leading-none">
+                    {unreadTotal > 9 ? '9+' : unreadTotal}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-semibold">Inbox</span>
+            </button>
+
+          </div>
+        </div>
+      </div>
+
       {/* Location exit alert — blocks all interaction */}
       {isOutside && (
         <LocationExitAlert
@@ -921,7 +942,8 @@ function PeopleHereList() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl bg-foreground text-background text-sm font-medium shadow-lg">
+        <div className="fixed left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl bg-foreground text-background text-sm font-medium shadow-lg whitespace-nowrap"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 88px)' }}>
           {toast}
         </div>
       )}
