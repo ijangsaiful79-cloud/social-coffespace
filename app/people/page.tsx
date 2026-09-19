@@ -180,11 +180,16 @@ function PeopleHereList() {
     enabled: !loading && !!shopCoords,
   })
 
+  const [realtimeOk, setRealtimeOk] = useState(true)
+
   const userIdRef = useRef<string | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
   const msgChannelRef = useRef<RealtimeChannel | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  const reconnectAttemptsRef = useRef(0)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
 
   useEffect(() => {
     if (!shopId) { router.push('/'); return }
@@ -234,26 +239,48 @@ function PeopleHereList() {
       await fetchPeople(uid, supabase)
       await fetchInbox(uid, supabase)
 
-      // Register push notifications
       registerPush(uid)
 
-      const channel = supabase
-        .channel(`people-${shopId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'coffee_shop_sessions', filter: `coffee_shop_id=eq.${shopId}` },
-          () => { if (userIdRef.current) fetchPeople(userIdRef.current, supabase) })
-        .subscribe()
-      channelRef.current = channel
+      function subscribeChannels() {
+        // Bersihkan channel lama
+        if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
+        if (msgChannelRef.current) { supabase.removeChannel(msgChannelRef.current); msgChannelRef.current = null }
 
-      // Listen for new messages to update inbox badge
-      const msgChannel = supabase
-        .channel(`inbox-messages-${uid}`)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
-          () => { if (userIdRef.current) fetchInbox(userIdRef.current, supabase) })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' },
-          () => { if (userIdRef.current) fetchInbox(userIdRef.current, supabase) })
-        .subscribe()
-      msgChannelRef.current = msgChannel
+        const channel = supabase
+          .channel(`people-${shopId}-${Date.now()}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'coffee_shop_sessions', filter: `coffee_shop_id=eq.${shopId}` },
+            () => { if (userIdRef.current) fetchPeople(userIdRef.current, supabase) })
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              setRealtimeOk(true)
+              reconnectAttemptsRef.current = 0
+            }
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+              setRealtimeOk(false)
+              // Exponential backoff: 3s → 6s → 12s → max 30s
+              const delay = Math.min(3000 * Math.pow(2, reconnectAttemptsRef.current), 30_000)
+              reconnectAttemptsRef.current++
+              if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
+              reconnectTimerRef.current = setTimeout(() => {
+                if (userIdRef.current) subscribeChannels()
+              }, delay)
+            }
+          })
+        channelRef.current = channel
 
+        const msgChannel = supabase
+          .channel(`inbox-${uid}-${Date.now()}`)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' },
+            () => { if (userIdRef.current) fetchInbox(userIdRef.current, supabase) })
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' },
+            () => { if (userIdRef.current) fetchInbox(userIdRef.current, supabase) })
+          .subscribe()
+        msgChannelRef.current = msgChannel
+      }
+
+      subscribeChannels()
+
+      // Polling fallback setiap 30 detik (tetap jalan meski realtime mati)
       pollRef.current = setInterval(() => {
         if (userIdRef.current) {
           fetchPeople(userIdRef.current, supabase)
@@ -267,6 +294,7 @@ function PeopleHereList() {
       if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
       if (msgChannelRef.current) { supabase.removeChannel(msgChannelRef.current); msgChannelRef.current = null }
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null }
     }
   }, [shopId])
 
@@ -633,6 +661,12 @@ function PeopleHereList() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Realtime connection indicator */}
+          <div title={realtimeOk ? 'Live update aktif' : 'Refresh otomatis 30 detik'}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border">
+            <span className={`w-1.5 h-1.5 rounded-full ${realtimeOk ? 'bg-green-500' : 'bg-amber-400 animate-pulse'}`} />
+            <span className="text-[10px] text-muted-foreground font-medium">{realtimeOk ? 'Live' : '30s'}</span>
+          </div>
           <button onClick={() => setThemeSwitcherOpen(true)}
             className="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-muted transition" title="Tampilan">
             <Palette size={15} strokeWidth={2} />
