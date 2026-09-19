@@ -24,6 +24,7 @@ interface ConversationItem {
   otherUser: Profile
   lastMessage: Message | null
   unreadCount: number
+  createdAt: string
 }
 
 const GENDER_LABEL: Record<string, string> = {
@@ -389,6 +390,7 @@ function PeopleHereList() {
     const profileMap = Object.fromEntries((profilesRes.data ?? []).map((p) => [p.user_id, p as unknown as Profile]))
     const allMessages = (messagesRes.data ?? []) as Message[]
 
+    const now = Date.now()
     const items: ConversationItem[] = visibleConvos.map((convo) => {
       const otherUid = convo.user_one_id === uid ? convo.user_two_id : convo.user_one_id
       const convoMessages = allMessages.filter((m) => m.conversation_id === convo.id)
@@ -399,11 +401,16 @@ function PeopleHereList() {
         otherUser: profileMap[otherUid],
         lastMessage,
         unreadCount,
+        createdAt: convo.created_at,
       }
-    }).filter((item) => item.otherUser) // filter out conversations where profile was deleted
-      .sort((a, b) => {
-        const aTime = a.lastMessage?.created_at ?? ''
-        const bTime = b.lastMessage?.created_at ?? ''
+    }).filter((item) => {
+      if (!item.otherUser) return false
+      if (item.lastMessage !== null) return true
+      // Tampilkan Say Hi baru (belum ada pesan) selama <24 jam
+      return now - new Date(item.createdAt).getTime() < 24 * 60 * 60 * 1000
+    }).sort((a, b) => {
+        const aTime = a.lastMessage?.created_at ?? a.createdAt
+        const bTime = b.lastMessage?.created_at ?? b.createdAt
         return bTime.localeCompare(aTime)
       })
 
