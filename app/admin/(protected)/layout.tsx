@@ -6,7 +6,9 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/admin/login')
+  const loginUrl = `/admin/login?key=${process.env.ADMIN_LOGIN_KEY ?? ''}`
+
+  if (!user) redirect(loginUrl)
 
   const adminSupabase = createAdminClient()
   const { data: adminData } = await adminSupabase
@@ -15,7 +17,7 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
     .eq('user_id', user.id)
     .single()
 
-  if (!adminData) redirect('/admin/login')
+  if (!adminData) redirect(loginUrl)
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
