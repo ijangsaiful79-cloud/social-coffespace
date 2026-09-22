@@ -33,6 +33,25 @@ const GENDER_LABEL: Record<string, string> = {
 
 const REPORT_REASONS = ['Spam', 'Konten tidak pantas', 'Pelecehan atau intimidasi', 'Profil palsu', 'Lainnya']
 
+const ICE_BREAKERS = [
+  'Kopi atau matcha?',
+  'Sering nongkrong di sini?',
+  'Lagi ngerjain apa hari ini?',
+  'Playlist favorit buat nugas?',
+  'Rekomendasiin menu terenak di sini dong',
+  'Lebih suka pagi atau malem?',
+  'Lagi baca buku apa?',
+  'Remote work atau kantor?',
+  'Udah pernah ke sini sebelumnya?',
+  'Nongkrong bareng atau sendirian hari ini?',
+]
+
+function getIceBreaker(userId: string) {
+  let hash = 0
+  for (let i = 0; i < userId.length; i++) hash = (hash * 31 + userId.charCodeAt(i)) | 0
+  return ICE_BREAKERS[Math.abs(hash) % ICE_BREAKERS.length]
+}
+
 const AVATAR_GRADIENTS = [
   ['#C57A6E', '#D4907A'],  // dusty rose
   ['#b55c6e', '#d98496'],  // dusty rose
@@ -141,6 +160,8 @@ function PeopleHereList() {
   const [sessionExpiresAt, setSessionExpiresAt] = useState<Date | null>(null)
   const [sessionExpired, setSessionExpired] = useState(false)
   const [avatarUploading, setAvatarUploading] = useState(false)
+  const [pendingLikes, setPendingLikes] = useState<Array<{ sender_id: string; profile: Profile }>>([])
+  const [sentHis, setSentHis] = useState<Set<string>>(new Set())
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false)
@@ -185,6 +206,7 @@ function PeopleHereList() {
   const userIdRef = useRef<string | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
   const msgChannelRef = useRef<RealtimeChannel | null>(null)
+  const likesChannelRef = useRef<RealtimeChannel | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const reconnectAttemptsRef = useRef(0)
@@ -238,6 +260,8 @@ function PeopleHereList() {
 
       await fetchPeople(uid, supabase)
       await fetchInbox(uid, supabase)
+      await fetchPendingLikes(uid, supabase)
+      await fetchSentHis(uid, supabase)
 
       registerPush(uid)
 
@@ -276,6 +300,19 @@ function PeopleHereList() {
             () => { if (userIdRef.current) fetchInbox(userIdRef.current, supabase) })
           .subscribe()
         msgChannelRef.current = msgChannel
+
+        if (likesChannelRef.current) { supabase.removeChannel(likesChannelRef.current); likesChannelRef.current = null }
+        const likesChannel = supabase
+          .channel(`likes-${uid}-${Date.now()}`)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'interactions', filter: `receiver_id=eq.${uid}` },
+            (payload) => {
+              if (payload.new.type === 'say_hi' && userIdRef.current) {
+                fetchPendingLikes(userIdRef.current, supabase)
+                showToast('Ada yang Say Hi ke kamu! 👋')
+              }
+            })
+          .subscribe()
+        likesChannelRef.current = likesChannel
       }
 
       subscribeChannels()
@@ -285,6 +322,8 @@ function PeopleHereList() {
         if (userIdRef.current) {
           fetchPeople(userIdRef.current, supabase)
           fetchInbox(userIdRef.current, supabase)
+          fetchPendingLikes(userIdRef.current, supabase)
+          fetchSentHis(userIdRef.current, supabase)
         }
       }, 30_000)
     }
@@ -293,6 +332,7 @@ function PeopleHereList() {
     return () => {
       if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
       if (msgChannelRef.current) { supabase.removeChannel(msgChannelRef.current); msgChannelRef.current = null }
+      if (likesChannelRef.current) { supabase.removeChannel(likesChannelRef.current); likesChannelRef.current = null }
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
       if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null }
     }
@@ -447,6 +487,29 @@ function PeopleHereList() {
     setInboxLoading(false)
   }
 
+  async function fetchPendingLikes(uid: string, supabase: ReturnType<typeof createClient>) {
+    const [{ data: incoming }, { data: convos }] = await Promise.all([
+      supabase.from('interactions').select('sender_id').eq('receiver_id', uid).eq('type', 'say_hi'),
+      supabase.from('conversations').select('user_one_id, user_two_id').or(`user_one_id.eq.${uid},user_two_id.eq.${uid}`),
+    ])
+    const existingPartners = new Set((convos ?? []).map((c) => c.user_one_id === uid ? c.user_two_id : c.user_one_id))
+    const pending = [...new Set((incoming ?? []).map((i) => i.sender_id))].filter((id) => !existingPartners.has(id) && id !== uid)
+    if (pending.length === 0) { setPendingLikes([]); return }
+    const { data: profiles } = await supabase.from('profiles').select('*').in('user_id', pending)
+    const profileMap = Object.fromEntries((profiles ?? []).map((p) => [p.user_id, p]))
+    setPendingLikes(pending.map((id) => ({ sender_id: id, profile: profileMap[id] as Profile })).filter((p) => p.profile))
+  }
+
+  async function fetchSentHis(uid: string, supabase: ReturnType<typeof createClient>) {
+    const [{ data: outgoing }, { data: convos }] = await Promise.all([
+      supabase.from('interactions').select('receiver_id').eq('sender_id', uid).eq('type', 'say_hi'),
+      supabase.from('conversations').select('user_one_id, user_two_id').or(`user_one_id.eq.${uid},user_two_id.eq.${uid}`),
+    ])
+    const existingPartners = new Set((convos ?? []).map((c) => c.user_one_id === uid ? c.user_two_id : c.user_one_id))
+    const sent = (outgoing ?? []).map((i) => i.receiver_id).filter((id) => !existingPartners.has(id))
+    setSentHis(new Set(sent))
+  }
+
   function showToast(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(null), 3000)
@@ -496,31 +559,42 @@ function PeopleHereList() {
 
   async function handleSayHi(receiverId: string) {
     if (!currentUserId || sayingHiTo.has(receiverId)) return
+    if (sentHis.has(receiverId)) { showToast('Sudah kirim Say Hi, tunggu balasannya 👋'); return }
+
     setSayingHiTo((prev) => new Set(prev).add(receiverId))
     const supabase = createClient()
-    try {
-      await supabase.from('interactions').insert({ sender_id: currentUserId, receiver_id: receiverId, type: 'say_hi' })
+
+    async function openConversation() {
       const { data: existing } = await supabase
         .from('conversations').select('id')
         .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`)
         .maybeSingle()
-      if (existing?.id) { router.push(`/chat/${existing.id}`); return }
+      if (existing?.id) { setPendingLikes((p) => p.filter((x) => x.sender_id !== receiverId)); router.push(`/chat/${existing.id}`); return }
       const { data: convo, error } = await supabase
         .from('conversations').insert({ user_one_id: currentUserId, user_two_id: receiverId }).select('id').single()
       if (error) {
-        // Race condition: another insert won — find the existing conversation
         const { data: fallback } = await supabase
           .from('conversations').select('id')
           .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`)
           .maybeSingle()
-        if (fallback?.id) { router.push(`/chat/${fallback.id}`); return }
+        if (fallback?.id) { setPendingLikes((p) => p.filter((x) => x.sender_id !== receiverId)); router.push(`/chat/${fallback.id}`); return }
         showToast('Gagal memulai chat. Coba lagi.')
         return
       }
-      if (!convo) { showToast('Gagal memulai chat. Coba lagi.'); return }
-      router.push(`/chat/${convo.id}`)
+      if (convo) { setPendingLikes((p) => p.filter((x) => x.sender_id !== receiverId)); router.push(`/chat/${convo.id}`) }
+    }
+
+    try {
+      const isMutual = pendingLikes.some((p) => p.sender_id === receiverId)
+      await supabase.from('interactions').insert({ sender_id: currentUserId, receiver_id: receiverId, type: 'say_hi' })
+      if (isMutual) {
+        await openConversation()
+      } else {
+        setSentHis((prev) => new Set(prev).add(receiverId))
+        showToast('Say Hi terkirim! Tunggu balasannya 👋')
+      }
     } catch {
-      showToast('Gagal memulai chat. Coba lagi.')
+      showToast('Gagal. Coba lagi.')
     } finally {
       setSayingHiTo((prev) => { const s = new Set(prev); s.delete(receiverId); return s })
     }
@@ -711,6 +785,24 @@ function PeopleHereList() {
               <span className="ml-auto shrink-0 text-xs text-muted-foreground font-medium">{filteredPeople.length} orang</span>
             </div>
 
+            {pendingLikes.length > 0 && (
+              <div className="mb-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3">
+                <p className="text-xs font-semibold text-primary mb-2">👋 {pendingLikes.length} orang Say Hi ke kamu</p>
+                <div className="flex flex-wrap gap-2">
+                  {pendingLikes.map(({ sender_id, profile }) => (
+                    <button
+                      key={sender_id}
+                      onClick={() => handleSayHi(sender_id)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition"
+                    >
+                      <Avatar name={profile.display_name} avatarUrl={profile.avatar_url} isAnonymous={false} size={20} />
+                      <span className="text-xs font-semibold text-primary">{profile.display_name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {filteredPeople.length === 0 ? (
               <div className="text-center py-16">
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
@@ -792,6 +884,9 @@ function PeopleHereList() {
                                   Di sini sekarang
                                 </span>
                               )}
+                              <p className="text-[10px] text-muted-foreground mt-1.5 italic">
+                                💬 {getIceBreaker(person.user_id)}
+                              </p>
                             </>
                           )}
 
@@ -804,16 +899,26 @@ function PeopleHereList() {
                               >
                                 Lihat Profil
                               </button>
-                              {person.chat_enabled && (
-                                <button
-                                  onClick={() => handleSayHi(person.user_id)}
-                                  disabled={isLoading}
-                                  className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground px-3 py-1.5 rounded-lg hover:opacity-90 active:scale-95 transition disabled:opacity-50 min-h-[32px]"
-                                >
-                                  <MessageSquare size={13} strokeWidth={2} />
-                                  {isLoading ? 'Mengirim...' : 'Say Hi'}
-                                </button>
-                              )}
+                              {person.chat_enabled && (() => {
+                                const isSent = sentHis.has(person.user_id)
+                                const isMutual = pendingLikes.some((p) => p.sender_id === person.user_id)
+                                return (
+                                  <button
+                                    onClick={() => handleSayHi(person.user_id)}
+                                    disabled={isLoading || isSent}
+                                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg active:scale-95 transition min-h-[32px] disabled:opacity-60 ${
+                                      isMutual
+                                        ? 'bg-green-500 text-white hover:opacity-90'
+                                        : isSent
+                                        ? 'bg-muted text-muted-foreground border border-border cursor-default'
+                                        : 'bg-primary text-primary-foreground hover:opacity-90'
+                                    }`}
+                                  >
+                                    <MessageSquare size={13} strokeWidth={2} />
+                                    {isLoading ? 'Mengirim...' : isMutual ? 'Balas Say Hi!' : isSent ? 'Menunggu...' : 'Say Hi'}
+                                  </button>
+                                )
+                              })()}
                             </div>
                           )}
                         </div>
@@ -1303,16 +1408,22 @@ function PeopleHereList() {
                   className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition min-h-[44px]">
                   Tutup
                 </button>
-                {profilePreview.chat_enabled && (
-                  <button
-                    onClick={() => { setProfilePreview(null); handleSayHi(profilePreview.user_id) }}
-                    disabled={sayingHiTo.has(profilePreview.user_id)}
-                    className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition disabled:opacity-50 min-h-[44px] flex items-center justify-center gap-2"
-                  >
-                    <MessageSquare size={15} strokeWidth={2} />
-                    Say Hi
-                  </button>
-                )}
+                {profilePreview.chat_enabled && (() => {
+                  const isSent = sentHis.has(profilePreview.user_id)
+                  const isMutual = pendingLikes.some((p) => p.sender_id === profilePreview.user_id)
+                  return (
+                    <button
+                      onClick={() => { setProfilePreview(null); handleSayHi(profilePreview.user_id) }}
+                      disabled={sayingHiTo.has(profilePreview.user_id) || isSent}
+                      className={`flex-1 py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition disabled:opacity-60 min-h-[44px] flex items-center justify-center gap-2 ${
+                        isMutual ? 'bg-green-500 text-white' : isSent ? 'bg-muted text-muted-foreground border border-border' : 'bg-primary text-primary-foreground'
+                      }`}
+                    >
+                      <MessageSquare size={15} strokeWidth={2} />
+                      {isMutual ? 'Balas Say Hi!' : isSent ? 'Menunggu...' : 'Say Hi'}
+                    </button>
+                  )
+                })()}
               </div>
             </div>
           </div>

@@ -35,9 +35,18 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
   const [interests, setInterests] = useState<string[]>([])
   const [joinError, setJoinError] = useState<string | null>(null)
   const [existingUserId, setExistingUserId] = useState<string | null>(null)
+  const [activeCount, setActiveCount] = useState<number | null>(null)
 
   useEffect(() => {
     checkExistingSession()
+    const supabase = createClient()
+    supabase
+      .from('coffee_shop_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('coffee_shop_id', shop.id)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .then(({ count }) => setActiveCount(count ?? 0))
   }, [])
 
   async function checkExistingSession() {
@@ -233,6 +242,12 @@ export default function CoffeeShopEntry({ shop }: { shop: Shop }) {
             <p className="text-center text-muted-foreground text-sm">
               Lihat siapa aja yang lagi di sini dan mulai ngobrol.
             </p>
+            {activeCount !== null && activeCount > 0 && (
+              <div className="flex items-center justify-center gap-1.5 text-sm font-semibold text-primary">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                {activeCount} orang lagi ada di sini sekarang
+              </div>
+            )}
             <button
               onClick={() => setStep('gps')}
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition min-h-[48px]"
