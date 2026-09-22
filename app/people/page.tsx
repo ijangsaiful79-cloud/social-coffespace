@@ -162,6 +162,7 @@ function PeopleHereList() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [pendingLikes, setPendingLikes] = useState<Array<{ sender_id: string; profile: Profile }>>([])
   const [sentHis, setSentHis] = useState<Set<string>>(new Set())
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false)
@@ -839,7 +840,12 @@ function PeopleHereList() {
                       <div className="flex items-start gap-3.5 p-4">
                         {/* Avatar */}
                         <div className="shrink-0 relative">
-                          <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={64} />
+                          <div
+                            onClick={() => !isAnon && person.avatar_url && setPhotoPreview(person.avatar_url)}
+                            className={!isAnon && person.avatar_url ? 'cursor-pointer' : ''}
+                          >
+                            <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={64} />
+                          </div>
                           {!isAnon && genderLabel && (
                             <span className="absolute -bottom-1 -right-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground leading-tight">
                               {genderLabel[0]}
@@ -891,15 +897,17 @@ function PeopleHereList() {
                           )}
 
                           {/* Action row */}
-                          {!isAnon && (
+                          {person.chat_enabled && (
                             <div className="flex items-center gap-2 mt-2.5">
-                              <button
-                                onClick={() => setProfilePreview(person)}
-                                className="text-xs font-semibold text-muted-foreground border border-border px-3 py-1.5 rounded-lg hover:bg-muted transition min-h-[32px]"
-                              >
-                                Lihat Profil
-                              </button>
-                              {person.chat_enabled && (() => {
+                              {!isAnon && (
+                                <button
+                                  onClick={() => setProfilePreview(person)}
+                                  className="text-xs font-semibold text-muted-foreground border border-border px-3 py-1.5 rounded-lg hover:bg-muted transition min-h-[32px]"
+                                >
+                                  Lihat Profil
+                                </button>
+                              )}
+                              {(() => {
                                 const isSent = sentHis.has(person.user_id)
                                 const isMutual = pendingLikes.some((p) => p.sender_id === person.user_id)
                                 return (
@@ -1084,6 +1092,28 @@ function PeopleHereList() {
           onExit={handleLocationExit}
           loading={locationExitLoading}
         />
+      )}
+
+      {/* Photo Lightbox */}
+      {photoPreview && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setPhotoPreview(null)}
+        >
+          <div className="relative max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={photoPreview}
+              alt="Foto profil"
+              className="w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl"
+            />
+            <button
+              onClick={() => setPhotoPreview(null)}
+              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition"
+            >
+              <X size={16} strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Toast */}
@@ -1341,7 +1371,12 @@ function PeopleHereList() {
             <div className="px-6 pt-2 pb-6">
               {/* Avatar + name */}
               <div className="flex items-center gap-4 mb-5">
-                <Avatar name={profilePreview.display_name} avatarUrl={profilePreview.avatar_url} isAnonymous={false} size={64} />
+                <div
+                  onClick={() => profilePreview.avatar_url && setPhotoPreview(profilePreview.avatar_url)}
+                  className={profilePreview.avatar_url ? 'cursor-pointer' : ''}
+                >
+                  <Avatar name={profilePreview.display_name} avatarUrl={profilePreview.avatar_url} isAnonymous={false} size={64} />
+                </div>
                 <div className="min-w-0">
                   <p className="font-bold text-lg leading-tight truncate">{profilePreview.display_name}</p>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
