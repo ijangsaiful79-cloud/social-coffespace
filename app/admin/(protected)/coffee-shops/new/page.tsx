@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { generateCoffeeShopToken } from '@/lib/utils/token'
 import LocationPicker from '@/components/admin/LocationPicker'
-import LogoUploader from '@/components/admin/LogoUploader'
 
 type Plan = 'starter' | 'business' | 'pro'
 
@@ -15,11 +14,11 @@ const PLANS: { key: Plan; label: string; price: string; nfc: number; features: s
   },
   {
     key: 'business', label: 'Business', price: 'Rp 899.000', nfc: 10,
-    features: ['10 NFC Card', 'QR Code', 'Logo di app', 'Custom nama shop'],
+    features: ['10 NFC Card', 'QR Code', 'Custom nama shop'],
   },
   {
     key: 'pro', label: 'Pro', price: 'Rp 1.399.000', nfc: 20,
-    features: ['20 NFC Card', 'QR Code', 'Logo di app', 'Custom design card'],
+    features: ['20 NFC Card', 'QR Code', 'Custom design card'],
   },
 ]
 
@@ -30,7 +29,6 @@ export default function NewCoffeeShopPage() {
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
   const [radius, setRadius] = useState('100')
-  const [logoUrl, setLogoUrl] = useState('')
   const [plan, setPlan] = useState<Plan>('starter')
   const [expiresAt, setExpiresAt] = useState('')
   const [ownerContact, setOwnerContact] = useState('')
@@ -56,7 +54,6 @@ export default function NewCoffeeShopPage() {
         radius_meter: parseInt(radius),
         access_token: accessToken,
         slug: accessToken.split('-').slice(0, -1).join('-'),
-        logo_url: logoUrl || null,
         plan,
         expires_at: expiresAt || null,
         owner_contact: ownerContact.trim() || null,
@@ -152,10 +149,6 @@ export default function NewCoffeeShopPage() {
             <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
           </div>
-
-          {(plan === 'business' || plan === 'pro') && (
-            <LogoUploader onUpload={(url) => setLogoUrl(url)} />
-          )}
 
           <LocationPicker lat={lat} lng={lng}
             onChange={(newLat, newLng) => { setLat(newLat); setLng(newLng) }} />

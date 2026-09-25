@@ -410,8 +410,9 @@ function PeopleHereList() {
   }
 
   async function fetchPeople(uid: string, supabase: ReturnType<typeof createClient>) {
-    const { data: myBlocks } = await supabase.from('blocks').select('blocked_user_id').eq('user_id', uid)
-    const blockedIds = new Set((myBlocks ?? []).map((b: { blocked_user_id: string }) => b.blocked_user_id))
+    const { data: myBlocks } = await supabase.from('blocks').select('user_id, blocked_user_id')
+      .or(`user_id.eq.${uid},blocked_user_id.eq.${uid}`)
+    const blockedIds = new Set((myBlocks ?? []).map((b) => b.user_id === uid ? b.blocked_user_id : b.user_id))
 
     const { data: sessions } = await supabase
       .from('coffee_shop_sessions').select('id, user_id')
@@ -439,8 +440,9 @@ function PeopleHereList() {
 
     if (!convos || convos.length === 0) { setInbox([]); setUnreadTotal(0); setInboxLoading(false); return }
 
-    const { data: myBlocks } = await supabase.from('blocks').select('blocked_user_id').eq('user_id', uid)
-    const blockedIds = new Set((myBlocks ?? []).map((b: { blocked_user_id: string }) => b.blocked_user_id))
+    const { data: myBlocks } = await supabase.from('blocks').select('user_id, blocked_user_id')
+      .or(`user_id.eq.${uid},blocked_user_id.eq.${uid}`)
+    const blockedIds = new Set((myBlocks ?? []).map((b) => b.user_id === uid ? b.blocked_user_id : b.user_id))
 
     const visibleConvos = convos.filter((c) => {
       const otherUid = c.user_one_id === uid ? c.user_two_id : c.user_one_id
@@ -786,23 +788,6 @@ function PeopleHereList() {
               <span className="ml-auto shrink-0 text-xs text-muted-foreground font-medium">{filteredPeople.length} orang</span>
             </div>
 
-            {pendingLikes.length > 0 && (
-              <div className="mb-3 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3">
-                <p className="text-xs font-semibold text-primary mb-2">👋 {pendingLikes.length} orang Say Hi ke kamu</p>
-                <div className="flex flex-wrap gap-2">
-                  {pendingLikes.map(({ sender_id, profile }) => (
-                    <button
-                      key={sender_id}
-                      onClick={() => handleSayHi(sender_id)}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 hover:bg-primary/20 transition"
-                    >
-                      <Avatar name={profile.display_name} avatarUrl={profile.avatar_url} isAnonymous={false} size={20} />
-                      <span className="text-xs font-semibold text-primary">{profile.display_name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {filteredPeople.length === 0 ? (
               <div className="text-center py-16">

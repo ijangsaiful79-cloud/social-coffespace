@@ -19,8 +19,11 @@ npm run build
 echo "→ Copying static assets to standalone..."
 cp -r .next/static .next/standalone/.next/
 cp -r public .next/standalone/ 2>/dev/null || true
+cp .env.local .next/standalone/.env.local 2>/dev/null || true
 
 echo "→ Restarting PM2..."
-pm2 restart dattingcoffe-1 dattingcoffe-2 2>/dev/null || pm2 start ecosystem.config.js
+pm2 delete all 2>/dev/null || true
+pm2 start ecosystem.config.js
+pm2 save
 
 echo "✓ Deploy selesai!"
