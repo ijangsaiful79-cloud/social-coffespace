@@ -707,50 +707,41 @@ function PeopleHereList() {
   return (
     <main className="min-h-[100dvh] max-w-lg mx-auto flex flex-col">
       {/* Header */}
-      <div className="px-4 flex items-center justify-between shrink-0 border-b border-border/50"
-        style={{ paddingTop: 'max(20px, env(safe-area-inset-top))', paddingBottom: 14 }}>
-        <div className="flex items-center gap-3">
+      <div className="px-4 flex items-center justify-between shrink-0 border-b border-border/50 gap-3"
+        style={{ paddingTop: 'max(16px, env(safe-area-inset-top))', paddingBottom: 12 }}>
+        {/* Left: logo + info */}
+        <div className="flex items-center gap-2.5 min-w-0">
           {shopLogo ? (
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-border shrink-0">
-              <Image src={shopLogo} alt={shopName} width={40} height={40} className="object-cover w-full h-full" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-border shrink-0">
+              <Image src={shopLogo} alt={shopName} width={36} height={36} className="object-cover w-full h-full" />
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[#F7EEE1]">
+            <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 bg-[#F7EEE1]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-social.png" alt="Social Coffé" className="w-full h-full object-contain mix-blend-multiply" />
             </div>
           )}
-          <div>
-            {(shopPlan === 'business' || shopPlan === 'pro') ? (
-              <>
-                <h1 className="font-display text-base font-bold tracking-wide text-foreground leading-tight">{shopName}</h1>
-                <p className="text-xs text-muted-foreground">by Social Coffé · {people.length} orang di sini</p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                  <Coffee size={13} strokeWidth={2} className="text-muted-foreground" />
-                  {shopName}
-                </p>
-                <p className="text-xs text-muted-foreground">{people.length} orang di sini</p>
-              </>
-            )}
+          <div className="min-w-0">
+            <h1 className="font-display text-sm font-bold text-foreground leading-tight truncate">
+              {shopName}
+            </h1>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${realtimeOk ? 'bg-green-500' : 'bg-amber-400 animate-pulse'}`} />
+              <p className="text-[11px] text-muted-foreground truncate">
+                {people.length} orang di sini
+              </p>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Realtime connection indicator */}
-          <div title={realtimeOk ? 'Live update aktif' : 'Refresh otomatis 30 detik'}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border">
-            <span className={`w-1.5 h-1.5 rounded-full ${realtimeOk ? 'bg-green-500' : 'bg-amber-400 animate-pulse'}`} />
-            <span className="text-[10px] text-muted-foreground font-medium">{realtimeOk ? 'Live' : '30s'}</span>
-          </div>
+        {/* Right: actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <button onClick={() => setThemeSwitcherOpen(true)}
-            className="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-muted transition" title="Tampilan">
-            <Palette size={15} strokeWidth={2} />
+            className="w-8 h-8 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-muted transition" title="Tampilan">
+            <Palette size={14} strokeWidth={2} />
           </button>
           <button onClick={() => setExitConfirm(true)}
-            className="w-9 h-9 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition" title="Keluar">
-            <LogOut size={15} strokeWidth={2} />
+            className="w-8 h-8 rounded-xl border border-border flex items-center justify-center text-muted-foreground hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition" title="Keluar">
+            <LogOut size={14} strokeWidth={2} />
           </button>
         </div>
       </div>
@@ -773,7 +764,7 @@ function PeopleHereList() {
           return (
           <>
             {/* Filter chips */}
-            <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-1 scrollbar-none">
               {([
                 { key: 'all', label: 'Semua' },
                 { key: 'female', label: 'Cewek' },
@@ -785,25 +776,30 @@ function PeopleHereList() {
                   {label}
                 </button>
               ))}
-              <span className="ml-auto shrink-0 text-xs text-muted-foreground font-medium">{filteredPeople.length} orang</span>
             </div>
 
 
             {filteredPeople.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                  {genderFilter === 'all' ? <Coffee size={28} strokeWidth={1.5} className="text-muted-foreground" /> : <Users size={28} strokeWidth={1.5} className="text-muted-foreground" />}
+              <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                  style={{ background: 'var(--secondary)', border: '1.5px solid var(--border)' }}>
+                  {genderFilter === 'all'
+                    ? <Coffee size={32} strokeWidth={1.5} className="text-primary/60" />
+                    : <Users size={32} strokeWidth={1.5} className="text-primary/60" />}
                 </div>
                 {genderFilter === 'all' ? (
                   <>
-                    <p className="font-semibold mb-1">Kamu yang pertama di sini</p>
-                    <p className="text-sm text-muted-foreground">Orang lain akan muncul otomatis setelah bergabung.</p>
+                    <p className="font-bold text-base mb-1.5">Kamu yang pertama di sini</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">Orang lain akan muncul otomatis begitu mereka bergabung.</p>
+                    <div className="mt-6 px-4 py-2 rounded-full bg-muted border border-border text-xs text-muted-foreground">
+                      ⏱ Sesi aktif · 30 menit
+                    </div>
                   </>
                 ) : (
                   <>
-                    <p className="font-semibold mb-1">Tidak ada hasil</p>
+                    <p className="font-bold text-base mb-1.5">Tidak ada hasil</p>
                     <p className="text-sm text-muted-foreground">Tidak ada orang dengan filter ini sekarang.</p>
-                    <button onClick={() => setGenderFilter('all')} className="mt-3 px-4 py-2 rounded-xl text-sm font-semibold border border-border hover:bg-muted transition min-h-[44px]">Tampilkan semua</button>
+                    <button onClick={() => setGenderFilter('all')} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:opacity-90 transition min-h-[44px]">Tampilkan semua</button>
                   </>
                 )}
               </div>
@@ -926,7 +922,6 @@ function PeopleHereList() {
                 })}
               </div>
             )}
-            <p className="text-center text-xs text-muted-foreground mt-8">Sesi berakhir dalam 30 menit. Scan QR lagi untuk perpanjang.</p>
           </>
           )
         })()}
