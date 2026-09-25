@@ -8,7 +8,7 @@ import type { Message, Profile } from '@/types'
 import { playNotificationSound } from '@/lib/notification-sound'
 import { useLocationGuard } from '@/lib/hooks/useLocationGuard'
 import LocationExitAlert from '@/components/LocationExitAlert'
-import { ArrowLeft, MoreHorizontal, EyeOff, MessageCircle, Send, Flag, Ban, X, Trash2, CheckCheck, Instagram, Music2, Phone } from 'lucide-react'
+import { ArrowLeft, MoreHorizontal, EyeOff, MessageCircle, Send, Flag, Ban, X, Trash2, CheckCheck, AtSign, Music2, Phone } from 'lucide-react'
 
 const REPORT_REASONS = [
   'Spam',
@@ -584,7 +584,7 @@ export default function ChatPage({ params }: Props) {
                 {otherUser.instagram && (
                   <a href={`https://instagram.com/${otherUser.instagram}`} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted hover:bg-secondary transition active:scale-[0.98]">
-                    <Instagram size={16} strokeWidth={2} className="text-pink-500 shrink-0" />
+                    <AtSign size={16} strokeWidth={2} className="text-pink-500 shrink-0" />
                     <span className="text-sm font-medium">@{otherUser.instagram}</span>
                   </a>
                 )}
