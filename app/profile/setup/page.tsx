@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { generateAndSaveDeviceToken } from '@/lib/device-token'
 import { UserRound } from 'lucide-react'
 import type { Gender } from '@/types'
 import InterestPicker from '@/components/InterestPicker'
@@ -44,6 +45,8 @@ function ProfileSetupForm() {
       return
     }
 
+    const token = generateAndSaveDeviceToken()
+
     const { error } = await supabase.from('profiles').upsert({
       user_id: authData.user.id,
       display_name: displayName.trim(),
@@ -55,6 +58,7 @@ function ProfileSetupForm() {
       tiktok: tiktok.trim() || null,
       whatsapp: whatsapp.trim() || null,
       chat_enabled: chatEnabled,
+      device_token: token,
     })
 
     if (error) {

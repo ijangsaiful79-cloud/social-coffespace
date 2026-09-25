@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getDeviceToken, clearDeviceToken } from '@/lib/device-token'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Profile, Message } from '@/types'
 import { useLocationGuard } from '@/lib/hooks/useLocationGuard'
@@ -236,7 +237,17 @@ function PeopleHereList() {
       }
 
       const { data: myProf } = await supabase.from('profiles').select('*').eq('user_id', uid).single()
-      if (myProf) setMyProfile(myProf as unknown as Profile)
+      if (myProf) {
+        setMyProfile(myProf as unknown as Profile)
+        // Device token check — kick jika akun dibuka di perangkat lain
+        const localToken = getDeviceToken()
+        if (myProf.device_token && localToken !== myProf.device_token) {
+          clearDeviceToken()
+          await supabase.auth.signOut()
+          router.replace('/login?kicked=1')
+          return
+        }
+      }
 
       const { data: mySession } = await supabase
         .from('coffee_shop_sessions')
