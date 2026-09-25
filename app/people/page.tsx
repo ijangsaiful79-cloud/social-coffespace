@@ -830,6 +830,10 @@ function PeopleHereList() {
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto px-4" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 84px)' }}>
         {activeTab === 'people' && (() => {
+          // Map otherUser.user_id → conversation id for instant "Chat" button
+          const convoMap = new Map(
+            inbox.filter((i) => i.otherUser).map((i) => [i.otherUser.user_id, i.id])
+          )
           const filteredPeople = genderFilter === 'all'
             ? people
             : people.filter((p) => {
@@ -887,15 +891,18 @@ function PeopleHereList() {
                   const isLoading = sayingHiTo.has(person.user_id)
                   const isSent = sentHis.has(person.user_id)
                   const isMutual = pendingLikes.some((p) => p.sender_id === person.user_id)
+                  const existingConvoId = convoMap.get(person.user_id) ?? null
+                  const isMatched = !!existingConvoId
                   const genderLabel = person.gender === 'male' ? 'Pria' : person.gender === 'female' ? 'Wanita' : null
+                  const highlighted = isMutual || isMatched
                   return (
                     <div key={person.id}
                       className="rounded-2xl border transition-all duration-300"
                       style={{
-                        backgroundColor: isMutual ? 'color-mix(in srgb, var(--primary) 6%, var(--card))' : 'var(--card)',
-                        borderColor: isMutual ? 'color-mix(in srgb, var(--primary) 40%, transparent)' : isAnon ? 'var(--border)' : 'var(--border)',
+                        backgroundColor: highlighted ? 'color-mix(in srgb, var(--primary) 6%, var(--card))' : 'var(--card)',
+                        borderColor: highlighted ? 'color-mix(in srgb, var(--primary) 40%, transparent)' : 'var(--border)',
                         borderStyle: isAnon ? 'dashed' : 'solid',
-                        boxShadow: isMutual
+                        boxShadow: highlighted
                           ? '0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent), 0 4px 16px 0 rgba(197,122,110,0.12)'
                           : isAnon ? 'none' : '0 2px 8px 0 rgba(44,26,8,0.06)',
                       }}>
@@ -908,12 +915,12 @@ function PeopleHereList() {
                           >
                             <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={64} />
                           </div>
-                          {isMutual && (
+                          {highlighted && (
                             <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-sm">
                               <Heart size={10} strokeWidth={2.5} color="white" fill="white" />
                             </span>
                           )}
-                          {!isMutual && !isAnon && genderLabel && (
+                          {!highlighted && !isAnon && genderLabel && (
                             <span className="absolute -bottom-1 -right-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground leading-tight">
                               {genderLabel[0]}
                             </span>
@@ -922,7 +929,10 @@ function PeopleHereList() {
 
                         {/* Info */}
                         <div className="flex-1 min-w-0 pt-0.5">
-                          {isMutual && (
+                          {isMatched && (
+                            <p className="text-[10px] font-semibold text-primary mb-1">Sudah cocok — mulai ngobrol!</p>
+                          )}
+                          {!isMatched && isMutual && (
                             <p className="text-[10px] font-semibold text-primary mb-1">Dia Say Hi ke kamu!</p>
                           )}
                           <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -972,7 +982,7 @@ function PeopleHereList() {
                           {/* Action row */}
                           {person.chat_enabled && (
                             <div className="flex items-center gap-2 mt-2.5">
-                              {!isAnon && !isMutual && (
+                              {!isAnon && !highlighted && (
                                 <button
                                   onClick={() => setProfilePreview(person)}
                                   className="text-xs font-semibold text-muted-foreground border border-border px-3 py-2.5 rounded-xl hover:bg-muted transition min-h-[44px] active:scale-[0.97]"
@@ -980,20 +990,30 @@ function PeopleHereList() {
                                   Profil
                                 </button>
                               )}
-                              {isMutual ? (
+                              {isMatched ? (
+                                // Sudah match — langsung ke chat
+                                <button
+                                  onClick={() => router.push(`/chat/${existingConvoId}`)}
+                                  className="flex items-center gap-1.5 text-xs font-bold px-4 py-3 rounded-xl active:scale-[0.97] transition-all duration-150 min-h-[44px] text-white"
+                                  style={{ background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 70%, #e88))' }}
+                                >
+                                  <MessageSquare size={13} strokeWidth={2} /> Chat
+                                </button>
+                              ) : isMutual ? (
+                                // Dia sudah say hi, tinggal balas → buat conversation
                                 <button
                                   onClick={() => handleSayHi(person.user_id)}
                                   disabled={isLoading}
                                   className="flex items-center gap-1.5 text-xs font-bold px-4 py-3 rounded-xl active:scale-[0.97] transition-all duration-150 min-h-[44px] disabled:opacity-60 text-white"
                                   style={{ background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 70%, #e88))' }}
                                 >
-                                  {isLoading ? (
-                                    <span className="animate-pulse">Sebentar...</span>
-                                  ) : (
-                                    <><Heart size={13} strokeWidth={2.5} fill="white" /> Balas Say Hi!</>
-                                  )}
+                                  {isLoading
+                                    ? <span className="animate-pulse">Sebentar...</span>
+                                    : <><MessageSquare size={13} strokeWidth={2} /> Chat</>
+                                  }
                                 </button>
                               ) : (
+                                // Belum ada interaksi atau sedang menunggu
                                 <button
                                   onClick={() => handleSayHi(person.user_id)}
                                   disabled={isLoading || isSent}
@@ -1581,16 +1601,29 @@ function PeopleHereList() {
                 {profilePreview.chat_enabled && (() => {
                   const isSent = sentHis.has(profilePreview.user_id)
                   const isMutual = pendingLikes.some((p) => p.sender_id === profilePreview.user_id)
+                  const previewConvoId = inbox.find((i) => i.otherUser?.user_id === profilePreview.user_id)?.id ?? null
+                  if (previewConvoId) {
+                    return (
+                      <button
+                        onClick={() => { setProfilePreview(null); router.push(`/chat/${previewConvoId}`) }}
+                        className="flex-1 py-3 rounded-xl font-semibold text-sm text-white hover:opacity-90 transition min-h-[44px] flex items-center justify-center gap-2"
+                        style={{ background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 70%, #e88))' }}
+                      >
+                        <MessageSquare size={15} strokeWidth={2} /> Chat
+                      </button>
+                    )
+                  }
                   return (
                     <button
                       onClick={() => { setProfilePreview(null); handleSayHi(profilePreview.user_id) }}
-                      disabled={sayingHiTo.has(profilePreview.user_id) || isSent}
+                      disabled={sayingHiTo.has(profilePreview.user_id) || (isSent && !isMutual)}
                       className={`flex-1 py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition disabled:opacity-60 min-h-[44px] flex items-center justify-center gap-2 ${
-                        isMutual ? 'bg-green-500 text-white' : isSent ? 'bg-muted text-muted-foreground border border-border' : 'bg-primary text-primary-foreground'
+                        isMutual ? 'text-white' : isSent ? 'bg-muted text-muted-foreground border border-border' : 'bg-primary text-primary-foreground'
                       }`}
+                      style={isMutual ? { background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 70%, #e88))' } : undefined}
                     >
                       <MessageSquare size={15} strokeWidth={2} />
-                      {isMutual ? 'Balas Say Hi!' : isSent ? 'Menunggu...' : 'Say Hi'}
+                      {isMutual ? 'Chat' : isSent ? 'Menunggu...' : 'Say Hi'}
                     </button>
                   )
                 })()}

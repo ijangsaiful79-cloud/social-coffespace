@@ -8,7 +8,7 @@ import type { Message, Profile } from '@/types'
 import { playNotificationSound } from '@/lib/notification-sound'
 import { useLocationGuard } from '@/lib/hooks/useLocationGuard'
 import LocationExitAlert from '@/components/LocationExitAlert'
-import { ArrowLeft, MoreHorizontal, EyeOff, MessageCircle, Send, Flag, Ban, X, Trash2 } from 'lucide-react'
+import { ArrowLeft, MoreHorizontal, EyeOff, MessageCircle, Send, Flag, Ban, X, Trash2, CheckCheck } from 'lucide-react'
 
 const REPORT_REASONS = [
   'Spam',
@@ -398,7 +398,7 @@ export default function ChatPage({ params }: Props) {
                 {msg.message}
                 <div className={`text-[10px] mt-1 ${isOwn ? 'text-primary-foreground/60 text-right' : 'text-muted-foreground'}`}>
                   {new Date(msg.created_at).toLocaleTimeString('id', { hour: '2-digit', minute: '2-digit' })}
-                  {isOwn && msg.read_at && ' ✓'}
+                  {isOwn && msg.read_at && <CheckCheck size={11} strokeWidth={2.5} className="inline ml-1 opacity-80" />}
                 </div>
               </div>
             </div>
@@ -430,7 +430,7 @@ export default function ChatPage({ params }: Props) {
           <button
             type="submit"
             disabled={!text.trim() || sending}
-            className="w-11 h-11 rounded-xl flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 transition disabled:opacity-40 shrink-0"
+            className="w-11 h-11 rounded-xl flex items-center justify-center bg-primary text-primary-foreground hover:opacity-90 active:scale-95 transition disabled:opacity-40 shrink-0"
           >
             <Send size={16} strokeWidth={2} className={sending ? 'opacity-50' : ''} />
           </button>
