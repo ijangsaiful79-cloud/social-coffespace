@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import LocationPicker from '@/components/admin/LocationPicker'
+import LogoUploader from '@/components/admin/LogoUploader'
 
 type Plan = 'starter' | 'business' | 'pro'
 
@@ -29,6 +30,7 @@ export default function EditCoffeeShopPage({ params }: Props) {
   const [lat, setLat] = useState<number | null>(null)
   const [lng, setLng] = useState<number | null>(null)
   const [radius, setRadius] = useState('100')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [plan, setPlan] = useState<Plan>('starter')
   const [expiresAt, setExpiresAt] = useState('')
   const [ownerContact, setOwnerContact] = useState('')
@@ -45,6 +47,7 @@ export default function EditCoffeeShopPage({ params }: Props) {
         setLat(shop.latitude)
         setLng(shop.longitude)
         setRadius(String(shop.radius_meter))
+        setLogoUrl(shop.logo_url ?? null)
         setPlan((shop.plan ?? 'starter') as Plan)
         setExpiresAt(shop.expires_at ? shop.expires_at.split('T')[0] : '')
         setOwnerContact(shop.owner_contact ?? '')
@@ -67,6 +70,7 @@ export default function EditCoffeeShopPage({ params }: Props) {
         latitude: lat,
         longitude: lng,
         radius_meter: parseInt(radius),
+        logo_url: logoUrl || null,
         plan,
         expires_at: expiresAt || null,
         owner_contact: ownerContact.trim() || null,
@@ -136,6 +140,10 @@ export default function EditCoffeeShopPage({ params }: Props) {
             <input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 transition" />
           </div>
+
+          {(plan === 'business' || plan === 'pro') && (
+            <LogoUploader currentLogoUrl={logoUrl} onUpload={(url) => setLogoUrl(url || null)} />
+          )}
 
           <LocationPicker lat={lat} lng={lng}
             onChange={(newLat, newLng) => { setLat(newLat); setLng(newLng) }} />

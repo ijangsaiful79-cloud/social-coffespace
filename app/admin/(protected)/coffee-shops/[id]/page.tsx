@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase/server'
 import { ToggleActiveButton, DeleteShopButton } from './ShopActions'
 
@@ -45,9 +46,14 @@ export default async function CoffeeShopDetailPage({ params }: Props) {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-muted border border-border shrink-0 flex items-center justify-center text-lg font-bold text-muted-foreground">
-              {shop.name.charAt(0).toUpperCase()}
-            </div>
+            {shop.logo_url && (plan === 'business' || plan === 'pro') ? (
+              <Image src={shop.logo_url} alt={shop.name} width={48} height={48}
+                className="w-12 h-12 rounded-xl object-cover border border-border shrink-0" />
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-muted border border-border shrink-0 flex items-center justify-center text-lg font-bold text-muted-foreground">
+                {shop.name.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <h1 className="text-xl font-bold">{shop.name}</h1>
               <p className="text-sm text-muted-foreground mt-0.5">{shop.address}</p>
