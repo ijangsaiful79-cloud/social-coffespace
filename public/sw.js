@@ -1,10 +1,13 @@
+// Minimal fetch handler so iOS recognises this as a valid PWA service worker
+self.addEventListener('fetch', function () {})
+
 self.addEventListener('push', function (event) {
   const data = event.data ? event.data.json() : {}
   const title = data.title || 'Pesan baru'
   const options = {
     body: data.body || '',
-    icon: data.icon || '/icon-192.png',
-    badge: '/icon-96.png',
+    icon: data.icon || '/logo-social.png',
+    badge: '/logo-social.png',
     data: { url: data.url || '/' },
     requireInteraction: false,
     tag: data.tag || 'chat',

@@ -47,6 +47,7 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${geist.variable} ${calistoga.variable} h-full`} suppressHydrationWarning>
       <head>
+        <link rel="apple-touch-icon" href="/logo-social.png" />
         {/* Anti-flash: restore accent before first paint */}
         <script
           dangerouslySetInnerHTML={{

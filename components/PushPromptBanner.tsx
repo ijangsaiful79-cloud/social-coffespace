@@ -16,7 +16,10 @@ export default function PushPromptBanner({ userId, vapidKey }: Props) {
     if (!('Notification' in window)) return
     if (Notification.permission === 'granted') return
 
-    const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as Record<string, unknown>)['MSStream']
+    // iPad iOS 13+ reports as "Macintosh" — check maxTouchPoints as fallback
+    const isIos = (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) &&
+      !(window as unknown as Record<string, unknown>)['MSStream']
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as unknown as Record<string, unknown>)['standalone'] === true
