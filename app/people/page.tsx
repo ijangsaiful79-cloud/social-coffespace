@@ -625,14 +625,14 @@ function PeopleHereList() {
         return
       }
 
-      // 2. Still waiting for the other person to reply
-      if (sentHis.has(receiverId)) {
+      const isMutual = pendingLikes.some((p) => p.sender_id === receiverId)
+      const matchProfile = isMutual ? pendingLikes.find((p) => p.sender_id === receiverId)?.profile : undefined
+
+      // 2. Still waiting — only block if not mutual (mutual = both sent, must create convo)
+      if (sentHis.has(receiverId) && !isMutual) {
         showToast('Sudah kirim Say Hi, tunggu balasannya')
         return
       }
-
-      const isMutual = pendingLikes.some((p) => p.sender_id === receiverId)
-      const matchProfile = isMutual ? pendingLikes.find((p) => p.sender_id === receiverId)?.profile : undefined
 
       // 3. Insert interaction — handle unique constraint violation gracefully (code 23505)
       const { error: insertError } = await supabase
