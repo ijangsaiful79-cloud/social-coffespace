@@ -8,7 +8,7 @@ import type { Message, Profile } from '@/types'
 import { playNotificationSound } from '@/lib/notification-sound'
 import { useLocationGuard } from '@/lib/hooks/useLocationGuard'
 import LocationExitAlert from '@/components/LocationExitAlert'
-import { ArrowLeft, MoreHorizontal, EyeOff, MessageCircle, Send, Flag, Ban, X, Trash2, CheckCheck } from 'lucide-react'
+import { ArrowLeft, MoreHorizontal, EyeOff, MessageCircle, Send, Flag, Ban, X, Trash2, CheckCheck, Instagram, Music2, Phone } from 'lucide-react'
 
 const REPORT_REASONS = [
   'Spam',
@@ -113,6 +113,7 @@ export default function ChatPage({ params }: Props) {
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [profileOpen, setProfileOpen] = useState(false)
 
   const { isOutside } = useLocationGuard({
     lat: shopContext?.lat ?? null,
@@ -347,16 +348,21 @@ export default function ChatPage({ params }: Props) {
         <button onClick={() => router.back()} className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition shrink-0">
           <ArrowLeft size={18} strokeWidth={2} />
         </button>
-        <Avatar name={otherUser?.display_name ?? '?'} avatarUrl={otherUser?.avatar_url} isAnonymous={otherUser?.is_anonymous ?? true} size={38} />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm truncate">{otherUser?.display_name}</p>
-          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-            {otherUser?.is_anonymous
-              ? <><EyeOff size={10} strokeWidth={2} />Mode anonim</>
-              : otherUser?.age ? `${otherUser.age} yo` : 'Profil lengkap'
-            }
-          </p>
-        </div>
+        <button
+          onClick={() => { if (!otherUser?.is_anonymous) setProfileOpen(true) }}
+          className={`flex items-center gap-3 flex-1 min-w-0 text-left ${!otherUser?.is_anonymous ? 'active:opacity-70 transition-opacity' : ''}`}
+        >
+          <Avatar name={otherUser?.display_name ?? '?'} avatarUrl={otherUser?.avatar_url} isAnonymous={otherUser?.is_anonymous ?? true} size={38} />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm truncate">{otherUser?.display_name}</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+              {otherUser?.is_anonymous
+                ? <><EyeOff size={10} strokeWidth={2} />Mode anonim</>
+                : <span className="text-primary/70 font-medium">Tap untuk lihat profil</span>
+              }
+            </p>
+          </div>
+        </button>
         <button onClick={() => setMenuOpen(true)} className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition shrink-0">
           <MoreHorizontal size={18} strokeWidth={2} />
         </button>
@@ -527,6 +533,83 @@ export default function ChatPage({ params }: Props) {
           onExit={handleLocationExit}
           loading={locationExitLoading}
         />
+      )}
+
+      {/* Profile Sheet */}
+      {profileOpen && otherUser && !otherUser.is_anonymous && (
+        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 px-4 pb-6" onClick={() => setProfileOpen(false)}>
+          <div className="bg-background rounded-2xl w-full max-w-sm shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Top bar */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4">
+              <h2 className="font-bold text-base">Profil</h2>
+              <button onClick={() => setProfileOpen(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition">
+                <X size={15} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            {/* Avatar + name */}
+            <div className="flex items-center gap-4 px-5 pb-4">
+              <Avatar name={otherUser.display_name} avatarUrl={otherUser.avatar_url} isAnonymous={false} size={56} />
+              <div>
+                <p className="font-bold text-base leading-tight">{otherUser.display_name}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {[otherUser.age ? `${otherUser.age} yo` : null, otherUser.gender === 'male' ? 'Laki-laki' : otherUser.gender === 'female' ? 'Perempuan' : otherUser.gender === 'other' ? 'Lainnya' : null].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+            </div>
+
+            {/* Bio */}
+            {otherUser.bio && (
+              <div className="mx-5 mb-4 px-4 py-3 rounded-xl bg-muted">
+                <p className="text-sm text-foreground leading-relaxed">{otherUser.bio}</p>
+              </div>
+            )}
+
+            {/* Interests */}
+            {otherUser.interests && otherUser.interests.length > 0 && (
+              <div className="px-5 mb-4">
+                <div className="flex flex-wrap gap-2">
+                  {otherUser.interests.map((interest) => (
+                    <span key={interest} className="px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-medium border border-border">
+                      {interest}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Social links */}
+            {(otherUser.instagram || otherUser.tiktok || otherUser.whatsapp) && (
+              <div className="border-t border-border mx-5 pt-4 mb-5 flex flex-col gap-2">
+                {otherUser.instagram && (
+                  <a href={`https://instagram.com/${otherUser.instagram}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted hover:bg-secondary transition active:scale-[0.98]">
+                    <Instagram size={16} strokeWidth={2} className="text-pink-500 shrink-0" />
+                    <span className="text-sm font-medium">@{otherUser.instagram}</span>
+                  </a>
+                )}
+                {otherUser.tiktok && (
+                  <a href={`https://tiktok.com/@${otherUser.tiktok}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted hover:bg-secondary transition active:scale-[0.98]">
+                    <Music2 size={16} strokeWidth={2} className="text-foreground shrink-0" />
+                    <span className="text-sm font-medium">@{otherUser.tiktok}</span>
+                  </a>
+                )}
+                {otherUser.whatsapp && (
+                  <a href={`https://wa.me/${otherUser.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-muted hover:bg-secondary transition active:scale-[0.98]">
+                    <Phone size={16} strokeWidth={2} className="text-green-500 shrink-0" />
+                    <span className="text-sm font-medium">{otherUser.whatsapp}</span>
+                  </a>
+                )}
+              </div>
+            )}
+
+            {!otherUser.instagram && !otherUser.tiktok && !otherUser.whatsapp && !otherUser.bio && (
+              <p className="text-xs text-muted-foreground text-center pb-5 px-5">Belum ada info tambahan di profil ini.</p>
+            )}
+          </div>
+        </div>
       )}
 
       {toast && (
