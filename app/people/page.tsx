@@ -13,6 +13,7 @@ import { isWithinRadius } from '@/lib/utils/distance'
 import {
   Users, MessageSquare, LogOut, MoreHorizontal, Trash2,
   Flag, Ban, X, Coffee, EyeOff, Phone, UserRound, Camera, Palette,
+  Heart, Clock, MessageCircle,
 } from 'lucide-react'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import InterestPicker from '@/components/InterestPicker'
@@ -164,6 +165,7 @@ function PeopleHereList() {
   const [pendingLikes, setPendingLikes] = useState<Array<{ sender_id: string; profile: Profile }>>([])
   const [sentHis, setSentHis] = useState<Set<string>>(new Set())
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [matchScreen, setMatchScreen] = useState<{ name: string; avatarUrl: string | null; conversationId: string } | null>(null)
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false)
@@ -209,6 +211,7 @@ function PeopleHereList() {
   const channelRef = useRef<RealtimeChannel | null>(null)
   const msgChannelRef = useRef<RealtimeChannel | null>(null)
   const likesChannelRef = useRef<RealtimeChannel | null>(null)
+  const convosChannelRef = useRef<RealtimeChannel | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const reconnectAttemptsRef = useRef(0)
@@ -278,9 +281,10 @@ function PeopleHereList() {
       registerPush(uid)
 
       function subscribeChannels() {
-        // Bersihkan channel lama
         if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
         if (msgChannelRef.current) { supabase.removeChannel(msgChannelRef.current); msgChannelRef.current = null }
+        if (likesChannelRef.current) { supabase.removeChannel(likesChannelRef.current); likesChannelRef.current = null }
+        if (convosChannelRef.current) { supabase.removeChannel(convosChannelRef.current); convosChannelRef.current = null }
 
         const channel = supabase
           .channel(`people-${shopId}-${Date.now()}`)
@@ -293,7 +297,6 @@ function PeopleHereList() {
             }
             if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
               setRealtimeOk(false)
-              // Exponential backoff: 3s → 6s → 12s → max 30s
               const delay = Math.min(3000 * Math.pow(2, reconnectAttemptsRef.current), 30_000)
               reconnectAttemptsRef.current++
               if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
@@ -313,18 +316,52 @@ function PeopleHereList() {
           .subscribe()
         msgChannelRef.current = msgChannel
 
-        if (likesChannelRef.current) { supabase.removeChannel(likesChannelRef.current); likesChannelRef.current = null }
         const likesChannel = supabase
           .channel(`likes-${uid}-${Date.now()}`)
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'interactions', filter: `receiver_id=eq.${uid}` },
             (payload) => {
               if (payload.new.type === 'say_hi' && userIdRef.current) {
                 fetchPendingLikes(userIdRef.current, supabase)
-                showToast('Ada yang Say Hi ke kamu! 👋')
+                showToast('Ada yang Say Hi ke kamu!')
               }
             })
           .subscribe()
         likesChannelRef.current = likesChannel
+
+        // Conversations channel: fires when the other person creates the conversation (mutual match from their side)
+        // RLS ensures we only receive events for conversations we're part of
+        const convosChannel = supabase
+          .channel(`convos-${uid}-${Date.now()}`)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'conversations' },
+            async (payload) => {
+              const row = payload.new as { id: string; user_one_id: string; user_two_id: string }
+              if (row.user_one_id !== uid && row.user_two_id !== uid) return
+              const otherId = row.user_one_id === uid ? row.user_two_id : row.user_one_id
+
+              // Refresh inbox & sentHis immediately
+              fetchInbox(uid, supabase)
+              fetchSentHis(uid, supabase)
+
+              // Check if I had sent Hi to this person — if yes, show match screen (they replied)
+              const { data: mySentHi } = await supabase
+                .from('interactions').select('id')
+                .eq('sender_id', uid).eq('receiver_id', otherId).eq('type', 'say_hi')
+                .maybeSingle()
+
+              if (mySentHi) {
+                const { data: prof } = await supabase
+                  .from('profiles').select('display_name, avatar_url').eq('user_id', otherId).single()
+                if (prof) {
+                  setMatchScreen((prev) => prev ?? {
+                    name: prof.display_name,
+                    avatarUrl: prof.avatar_url ?? null,
+                    conversationId: row.id,
+                  })
+                }
+              }
+            })
+          .subscribe()
+        convosChannelRef.current = convosChannel
       }
 
       subscribeChannels()
@@ -345,6 +382,7 @@ function PeopleHereList() {
       if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
       if (msgChannelRef.current) { supabase.removeChannel(msgChannelRef.current); msgChannelRef.current = null }
       if (likesChannelRef.current) { supabase.removeChannel(likesChannelRef.current); likesChannelRef.current = null }
+      if (convosChannelRef.current) { supabase.removeChannel(convosChannelRef.current); convosChannelRef.current = null }
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
       if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null }
     }
@@ -573,39 +611,66 @@ function PeopleHereList() {
 
   async function handleSayHi(receiverId: string) {
     if (!currentUserId || sayingHiTo.has(receiverId)) return
-    if (sentHis.has(receiverId)) { showToast('Sudah kirim Say Hi, tunggu balasannya 👋'); return }
-
     setSayingHiTo((prev) => new Set(prev).add(receiverId))
     const supabase = createClient()
 
-    async function openConversation() {
-      const { data: existing } = await supabase
+    try {
+      // 1. If a conversation already exists, navigate to it directly — no duplicate insert
+      const { data: existingConvo } = await supabase
         .from('conversations').select('id')
         .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`)
         .maybeSingle()
-      if (existing?.id) { setPendingLikes((p) => p.filter((x) => x.sender_id !== receiverId)); router.push(`/chat/${existing.id}`); return }
-      const { data: convo, error } = await supabase
-        .from('conversations').insert({ user_one_id: currentUserId, user_two_id: receiverId }).select('id').single()
-      if (error) {
-        const { data: fallback } = await supabase
-          .from('conversations').select('id')
-          .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`)
-          .maybeSingle()
-        if (fallback?.id) { setPendingLikes((p) => p.filter((x) => x.sender_id !== receiverId)); router.push(`/chat/${fallback.id}`); return }
-        showToast('Gagal memulai chat. Coba lagi.')
+      if (existingConvo?.id) {
+        router.push(`/chat/${existingConvo.id}`)
         return
       }
-      if (convo) { setPendingLikes((p) => p.filter((x) => x.sender_id !== receiverId)); router.push(`/chat/${convo.id}`) }
-    }
 
-    try {
+      // 2. Still waiting for the other person to reply
+      if (sentHis.has(receiverId)) {
+        showToast('Sudah kirim Say Hi, tunggu balasannya')
+        return
+      }
+
       const isMutual = pendingLikes.some((p) => p.sender_id === receiverId)
-      await supabase.from('interactions').insert({ sender_id: currentUserId, receiver_id: receiverId, type: 'say_hi' })
+      const matchProfile = isMutual ? pendingLikes.find((p) => p.sender_id === receiverId)?.profile : undefined
+
+      // 3. Insert interaction — handle unique constraint violation gracefully (code 23505)
+      const { error: insertError } = await supabase
+        .from('interactions').insert({ sender_id: currentUserId, receiver_id: receiverId, type: 'say_hi' })
+      if (insertError && insertError.code !== '23505') {
+        showToast('Gagal. Coba lagi.')
+        return
+      }
+
+      // Lock button immediately regardless of mutual/non-mutual
+      setSentHis((prev) => new Set(prev).add(receiverId))
+
       if (isMutual) {
-        await openConversation()
-      } else {
-        setSentHis((prev) => new Set(prev).add(receiverId))
-        showToast('Say Hi terkirim! Tunggu balasannya 👋')
+        // 4. Create conversation (with race condition fallback)
+        let convoId: string | null = null
+        const { data: newConvo, error: convoError } = await supabase
+          .from('conversations').insert({ user_one_id: currentUserId, user_two_id: receiverId }).select('id').single()
+        if (convoError) {
+          const { data: fallback } = await supabase
+            .from('conversations').select('id')
+            .or(`and(user_one_id.eq.${currentUserId},user_two_id.eq.${receiverId}),and(user_one_id.eq.${receiverId},user_two_id.eq.${currentUserId})`)
+            .maybeSingle()
+          convoId = fallback?.id ?? null
+        } else {
+          convoId = newConvo?.id ?? null
+        }
+
+        if (convoId) {
+          setPendingLikes((p) => p.filter((x) => x.sender_id !== receiverId))
+          fetchInbox(currentUserId, supabase)
+          setMatchScreen({
+            name: matchProfile?.display_name ?? 'Seseorang',
+            avatarUrl: matchProfile?.avatar_url ?? null,
+            conversationId: convoId,
+          })
+        } else {
+          showToast('Gagal memulai chat. Coba lagi.')
+        }
       }
     } catch {
       showToast('Gagal. Coba lagi.')
@@ -802,8 +867,9 @@ function PeopleHereList() {
                   <>
                     <p className="font-bold text-base mb-1.5">Kamu yang pertama di sini</p>
                     <p className="text-sm text-muted-foreground leading-relaxed max-w-[220px]">Orang lain akan muncul otomatis begitu mereka bergabung.</p>
-                    <div className="mt-6 px-4 py-2 rounded-full bg-muted border border-border text-xs text-muted-foreground">
-                      ⏱ Sesi aktif · 30 menit
+                    <div className="mt-6 px-4 py-2 rounded-full bg-muted border border-border text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Clock size={11} strokeWidth={2} className="shrink-0" />
+                      Sesi aktif · 30 menit
                     </div>
                   </>
                 ) : (
@@ -819,15 +885,19 @@ function PeopleHereList() {
                 {filteredPeople.map((person) => {
                   const isAnon = person.is_anonymous
                   const isLoading = sayingHiTo.has(person.user_id)
+                  const isSent = sentHis.has(person.user_id)
+                  const isMutual = pendingLikes.some((p) => p.sender_id === person.user_id)
                   const genderLabel = person.gender === 'male' ? 'Pria' : person.gender === 'female' ? 'Wanita' : null
                   return (
                     <div key={person.id}
-                      className="rounded-2xl border transition-all duration-200"
+                      className="rounded-2xl border transition-all duration-300"
                       style={{
-                        backgroundColor: 'var(--card)',
-                        borderColor: 'var(--border)',
+                        backgroundColor: isMutual ? 'color-mix(in srgb, var(--primary) 6%, var(--card))' : 'var(--card)',
+                        borderColor: isMutual ? 'color-mix(in srgb, var(--primary) 40%, transparent)' : isAnon ? 'var(--border)' : 'var(--border)',
                         borderStyle: isAnon ? 'dashed' : 'solid',
-                        boxShadow: isAnon ? 'none' : '0 2px 8px 0 rgba(44,26,8,0.06)',
+                        boxShadow: isMutual
+                          ? '0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent), 0 4px 16px 0 rgba(197,122,110,0.12)'
+                          : isAnon ? 'none' : '0 2px 8px 0 rgba(44,26,8,0.06)',
                       }}>
                       <div className="flex items-start gap-3.5 p-4">
                         {/* Avatar */}
@@ -838,7 +908,12 @@ function PeopleHereList() {
                           >
                             <Avatar name={person.display_name} avatarUrl={person.avatar_url} isAnonymous={isAnon} size={64} />
                           </div>
-                          {!isAnon && genderLabel && (
+                          {isMutual && (
+                            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-sm">
+                              <Heart size={10} strokeWidth={2.5} color="white" fill="white" />
+                            </span>
+                          )}
+                          {!isMutual && !isAnon && genderLabel && (
                             <span className="absolute -bottom-1 -right-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground leading-tight">
                               {genderLabel[0]}
                             </span>
@@ -847,6 +922,9 @@ function PeopleHereList() {
 
                         {/* Info */}
                         <div className="flex-1 min-w-0 pt-0.5">
+                          {isMutual && (
+                            <p className="text-[10px] font-semibold text-primary mb-1">Dia Say Hi ke kamu!</p>
+                          )}
                           <div className="flex items-center gap-2 flex-wrap mb-0.5">
                             <p className={`font-bold text-base leading-tight truncate ${isAnon ? 'text-muted-foreground' : 'text-foreground'}`}>
                               {person.display_name}
@@ -877,48 +955,63 @@ function PeopleHereList() {
                                   )}
                                 </div>
                               )}
-                              {!person.bio && (!person.interests || person.interests.length === 0) && (
+                              {!person.bio && (!person.interests || person.interests.length === 0) && !isMutual && (
                                 <span className="inline-block mt-1 text-xs text-primary bg-secondary px-2 py-0.5 rounded-full font-medium border border-border">
                                   Di sini sekarang
                                 </span>
                               )}
-                              <p className="text-[10px] text-muted-foreground mt-1.5 italic">
-                                💬 {getIceBreaker(person.user_id)}
-                              </p>
+                              {!isMutual && (
+                                <p className="flex items-start gap-1 text-[10px] text-muted-foreground mt-1.5 italic">
+                                  <MessageCircle size={10} strokeWidth={2} className="shrink-0 mt-0.5" />
+                                  {getIceBreaker(person.user_id)}
+                                </p>
+                              )}
                             </>
                           )}
 
                           {/* Action row */}
                           {person.chat_enabled && (
                             <div className="flex items-center gap-2 mt-2.5">
-                              {!isAnon && (
+                              {!isAnon && !isMutual && (
                                 <button
                                   onClick={() => setProfilePreview(person)}
-                                  className="text-xs font-semibold text-muted-foreground border border-border px-3 py-1.5 rounded-lg hover:bg-muted transition min-h-[32px]"
+                                  className="text-xs font-semibold text-muted-foreground border border-border px-3 py-2.5 rounded-xl hover:bg-muted transition min-h-[44px] active:scale-[0.97]"
                                 >
-                                  Lihat Profil
+                                  Profil
                                 </button>
                               )}
-                              {(() => {
-                                const isSent = sentHis.has(person.user_id)
-                                const isMutual = pendingLikes.some((p) => p.sender_id === person.user_id)
-                                return (
-                                  <button
-                                    onClick={() => handleSayHi(person.user_id)}
-                                    disabled={isLoading || isSent}
-                                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg active:scale-95 transition min-h-[32px] disabled:opacity-60 ${
-                                      isMutual
-                                        ? 'bg-green-500 text-white hover:opacity-90'
-                                        : isSent
-                                        ? 'bg-muted text-muted-foreground border border-border cursor-default'
-                                        : 'bg-primary text-primary-foreground hover:opacity-90'
-                                    }`}
-                                  >
-                                    <MessageSquare size={13} strokeWidth={2} />
-                                    {isLoading ? 'Mengirim...' : isMutual ? 'Balas Say Hi!' : isSent ? 'Menunggu...' : 'Say Hi'}
-                                  </button>
-                                )
-                              })()}
+                              {isMutual ? (
+                                <button
+                                  onClick={() => handleSayHi(person.user_id)}
+                                  disabled={isLoading}
+                                  className="flex items-center gap-1.5 text-xs font-bold px-4 py-3 rounded-xl active:scale-[0.97] transition-all duration-150 min-h-[44px] disabled:opacity-60 text-white"
+                                  style={{ background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 70%, #e88))' }}
+                                >
+                                  {isLoading ? (
+                                    <span className="animate-pulse">Sebentar...</span>
+                                  ) : (
+                                    <><Heart size={13} strokeWidth={2.5} fill="white" /> Balas Say Hi!</>
+                                  )}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleSayHi(person.user_id)}
+                                  disabled={isLoading || isSent}
+                                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl active:scale-[0.97] transition-all duration-150 min-h-[44px] ${
+                                    isSent
+                                      ? 'bg-muted text-muted-foreground border border-border cursor-default opacity-70'
+                                      : 'bg-primary text-primary-foreground hover:opacity-90'
+                                  }`}
+                                >
+                                  {isLoading ? (
+                                    <span className="animate-pulse">...</span>
+                                  ) : isSent ? (
+                                    <><Clock size={11} strokeWidth={2} className="shrink-0" /> Menunggu...</>
+                                  ) : (
+                                    'Say Hi'
+                                  )}
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1032,7 +1125,8 @@ function PeopleHereList() {
 
             {/* People tab */}
             <button onClick={() => setActiveTab('people')}
-              className={`flex-1 flex flex-col items-center gap-1 pt-3 pb-2 transition-colors ${activeTab === 'people' ? 'text-primary' : 'text-muted-foreground'}`}>
+              className={`flex-1 flex flex-col items-center gap-1 pt-3 pb-2 relative transition-colors ${activeTab === 'people' ? 'text-primary' : 'text-muted-foreground'}`}>
+              <span className={`absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full transition-all duration-200 bg-primary ${activeTab === 'people' ? 'opacity-100' : 'opacity-0'}`} />
               <div className="relative">
                 <Users size={22} strokeWidth={activeTab === 'people' ? 2.5 : 1.75} />
                 {people.length > 0 && (
@@ -1060,7 +1154,8 @@ function PeopleHereList() {
 
             {/* Inbox tab */}
             <button onClick={() => setActiveTab('inbox')}
-              className={`flex-1 flex flex-col items-center gap-1 pt-3 pb-2 transition-colors ${activeTab === 'inbox' ? 'text-primary' : 'text-muted-foreground'}`}>
+              className={`flex-1 flex flex-col items-center gap-1 pt-3 pb-2 relative transition-colors ${activeTab === 'inbox' ? 'text-primary' : 'text-muted-foreground'}`}>
+              <span className={`absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full transition-all duration-200 bg-primary ${activeTab === 'inbox' ? 'opacity-100' : 'opacity-0'}`} />
               <div className="relative">
                 <MessageSquare size={22} strokeWidth={activeTab === 'inbox' ? 2.5 : 1.75} />
                 {unreadTotal > 0 && (
@@ -1083,6 +1178,55 @@ function PeopleHereList() {
           onExit={handleLocationExit}
           loading={locationExitLoading}
         />
+      )}
+
+      {/* Match Screen */}
+      {matchScreen && (
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center px-6"
+          style={{ background: 'linear-gradient(160deg, #1a0a06 0%, #2d1208 50%, #1a0a06 100%)' }}>
+          {/* Glow blobs */}
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full opacity-20 blur-3xl pointer-events-none"
+            style={{ background: 'var(--primary)' }} />
+
+          {/* Avatars */}
+          <div className="relative flex items-center justify-center mb-8">
+            <div className="w-24 h-24 rounded-full border-4 border-white/20 overflow-hidden shadow-2xl -mr-3 z-10">
+              <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={false} size={96} />
+            </div>
+            <div className="absolute z-20 w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-xl border-2 border-white/30">
+              <Heart size={17} strokeWidth={2.5} color="white" fill="white" />
+            </div>
+            <div className="w-24 h-24 rounded-full border-4 border-white/20 overflow-hidden shadow-2xl -ml-3 z-10">
+              <Avatar name={matchScreen.name} avatarUrl={matchScreen.avatarUrl} isAnonymous={false} size={96} />
+            </div>
+          </div>
+
+          {/* Text */}
+          <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">Saling tertarik</p>
+          <h2 className="text-white text-3xl font-bold text-center mb-2" style={{ fontFamily: 'var(--font-display, serif)' }}>
+            Cocok banget!
+          </h2>
+          <p className="text-white/60 text-sm text-center mb-10 leading-relaxed">
+            Kamu dan <span className="text-white font-semibold">{matchScreen.name}</span> sama-sama Say Hi.<br />Mulai ngobrol sekarang!
+          </p>
+
+          {/* CTA */}
+          <button
+            onClick={() => { setMatchScreen(null); router.push(`/chat/${matchScreen.conversationId}`) }}
+            className="w-full max-w-xs py-4 rounded-2xl font-bold text-base text-white mb-3 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            style={{ background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 60%, #e06060))',
+              boxShadow: '0 8px 32px rgba(197,122,110,0.4)' }}
+          >
+            <MessageSquare size={18} strokeWidth={2} />
+            Mulai Ngobrol
+          </button>
+          <button
+            onClick={() => setMatchScreen(null)}
+            className="text-white/40 text-sm py-2 px-6 hover:text-white/70 transition"
+          >
+            Nanti aja
+          </button>
+        </div>
       )}
 
       {/* Photo Lightbox */}

@@ -4,12 +4,14 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { generateAndSaveDeviceToken } from '@/lib/device-token'
 import { Coffee } from 'lucide-react'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/people'
+  const kicked = searchParams.get('kicked') === '1'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,13 +24,16 @@ function LoginForm() {
     setError(null)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (error) {
-      setError(error.message)
+    if (error || !data.user) {
+      setError(error?.message ?? 'Login gagal')
       setLoading(false)
       return
     }
+
+    const token = generateAndSaveDeviceToken()
+    await supabase.from('profiles').update({ device_token: token }).eq('user_id', data.user.id)
 
     router.push(redirect)
     router.refresh()
@@ -50,6 +55,14 @@ function LoginForm() {
           <h1 className="font-display text-2xl mb-1">Selamat datang kembali</h1>
           <p className="text-sm text-muted-foreground">Masuk ke Social Coffé</p>
         </div>
+
+        {kicked && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+            <p className="text-sm text-amber-700 text-center font-medium">
+              Akunmu masuk dari perangkat lain. Silakan login ulang.
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
