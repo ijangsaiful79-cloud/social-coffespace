@@ -764,7 +764,7 @@ function PeopleHereList() {
           return (
           <>
             {/* Filter chips */}
-            <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex items-center gap-1.5 mb-3 mt-4 overflow-x-auto pb-1 scrollbar-none">
               {([
                 { key: 'all', label: 'Semua' },
                 { key: 'female', label: 'Cewek' },
