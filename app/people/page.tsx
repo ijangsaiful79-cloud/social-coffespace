@@ -859,6 +859,30 @@ function PeopleHereList() {
             </div>
 
 
+            {/* Pending likes notification strip */}
+            {pendingLikes.length > 0 && (
+              <div className="mb-3 px-3.5 py-3 rounded-2xl flex items-center gap-3"
+                style={{
+                  background: 'color-mix(in srgb, var(--primary) 8%, var(--card))',
+                  border: '1px solid color-mix(in srgb, var(--primary) 28%, transparent)',
+                }}>
+                <div className="flex -space-x-2 shrink-0">
+                  {pendingLikes.slice(0, 3).map(({ sender_id, profile }) => (
+                    <div key={sender_id} className="w-8 h-8 rounded-full ring-2 ring-card overflow-hidden shrink-0">
+                      <Avatar name={profile.display_name} avatarUrl={profile.avatar_url} isAnonymous={profile.is_anonymous} size={32} />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-primary leading-tight">
+                    {pendingLikes.length === 1 ? '1 orang Say Hi ke kamu!' : `${pendingLikes.length} orang Say Hi ke kamu!`}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Scroll ke bawah untuk balas ↓</p>
+                </div>
+                <Heart size={15} strokeWidth={2} className="text-primary shrink-0" fill="currentColor" />
+              </div>
+            )}
+
             {filteredPeople.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
                 <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5"
@@ -930,10 +954,14 @@ function PeopleHereList() {
                         {/* Info */}
                         <div className="flex-1 min-w-0 pt-0.5">
                           {isMatched && (
-                            <p className="text-[10px] font-semibold text-primary mb-1">Sudah cocok — mulai ngobrol!</p>
+                            <p className="text-[10px] font-bold text-primary mb-1.5">✓ Sudah cocok — mulai ngobrol!</p>
                           )}
                           {!isMatched && isMutual && (
-                            <p className="text-[10px] font-semibold text-primary mb-1">Dia Say Hi ke kamu!</p>
+                            <div className="flex items-center gap-1.5 mb-2 px-2 py-1 rounded-full w-fit"
+                              style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 35%, transparent)' }}>
+                              <Heart size={9} strokeWidth={2.5} fill="currentColor" className="text-primary" />
+                              <span className="text-[10px] font-bold text-primary">Balas Say Hi yuk!</span>
+                            </div>
                           )}
                           <div className="flex items-center gap-2 flex-wrap mb-0.5">
                             <p className={`font-bold text-base leading-tight truncate ${isAnon ? 'text-muted-foreground' : 'text-foreground'}`}>
@@ -1019,16 +1047,16 @@ function PeopleHereList() {
                                   disabled={isLoading || isSent}
                                   className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2.5 rounded-xl active:scale-[0.97] transition-all duration-150 min-h-[44px] ${
                                     isSent
-                                      ? 'bg-muted text-muted-foreground border border-border cursor-default opacity-70'
+                                      ? 'bg-muted text-muted-foreground border border-border cursor-default'
                                       : 'bg-primary text-primary-foreground hover:opacity-90'
                                   }`}
                                 >
                                   {isLoading ? (
-                                    <span className="animate-pulse">...</span>
+                                    <span className="animate-pulse">Sebentar...</span>
                                   ) : isSent ? (
-                                    <><Clock size={11} strokeWidth={2} className="shrink-0" /> Menunggu...</>
+                                    <><Clock size={11} strokeWidth={2} className="shrink-0 opacity-50" /> <span className="opacity-60">Menunggu</span></>
                                   ) : (
-                                    'Say Hi'
+                                    <><Heart size={12} strokeWidth={2.5} /> Say Hi</>
                                   )}
                                 </button>
                               )}
@@ -1200,52 +1228,72 @@ function PeopleHereList() {
         />
       )}
 
-      {/* Match Screen */}
+      {/* Match Screen — Bottom Sheet */}
       {matchScreen && (
-        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center px-6"
-          style={{ background: 'linear-gradient(160deg, #1a0a06 0%, #2d1208 50%, #1a0a06 100%)' }}>
-          {/* Glow blobs */}
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full opacity-20 blur-3xl pointer-events-none"
-            style={{ background: 'var(--primary)' }} />
+        <div
+          className="fixed inset-0 z-[200] flex items-end justify-center"
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setMatchScreen(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-t-3xl overflow-hidden"
+            style={{ background: 'var(--card)', boxShadow: '0 -8px 48px rgba(0,0,0,0.18)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-10 h-1 rounded-full bg-border" />
+            </div>
 
-          {/* Avatars */}
-          <div className="relative flex items-center justify-center mb-8">
-            <div className="w-24 h-24 rounded-full border-4 border-white/20 overflow-hidden shadow-2xl -mr-3 z-10">
-              <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={false} size={96} />
-            </div>
-            <div className="absolute z-20 w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-xl border-2 border-white/30">
-              <Heart size={17} strokeWidth={2.5} color="white" fill="white" />
-            </div>
-            <div className="w-24 h-24 rounded-full border-4 border-white/20 overflow-hidden shadow-2xl -ml-3 z-10">
-              <Avatar name={matchScreen.name} avatarUrl={matchScreen.avatarUrl} isAnonymous={false} size={96} />
+            <div className="px-6 pt-3 pb-[max(32px,env(safe-area-inset-bottom))]">
+              {/* Avatars */}
+              <div className="flex items-center justify-center mb-5">
+                <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0"
+                  style={{ boxShadow: '0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent)' }}>
+                  <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={false} size={72} />
+                </div>
+                <div className="mx-4 w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0"
+                  style={{ boxShadow: '0 4px 16px color-mix(in srgb, var(--primary) 45%, transparent)' }}>
+                  <Heart size={17} strokeWidth={2.5} color="white" fill="white" />
+                </div>
+                <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0"
+                  style={{ boxShadow: '0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent)' }}>
+                  <Avatar name={matchScreen.name} avatarUrl={matchScreen.avatarUrl} isAnonymous={false} size={72} />
+                </div>
+              </div>
+
+              {/* Copy */}
+              <div className="text-center mb-6">
+                <p className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mb-1.5">Saling tertarik ☕</p>
+                <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-display, serif)' }}>
+                  Cocok banget!
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Kamu dan <span className="font-semibold text-foreground">{matchScreen.name}</span> sama-sama Say Hi.<br />
+                  Mulai ngobrol sekarang!
+                </p>
+              </div>
+
+              {/* CTA */}
+              <button
+                onClick={() => { setMatchScreen(null); router.push(`/chat/${matchScreen.conversationId}`) }}
+                className="w-full py-4 rounded-2xl font-bold text-base text-white mb-3 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                style={{
+                  background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 60%, #e06060))',
+                  boxShadow: '0 4px 20px color-mix(in srgb, var(--primary) 38%, transparent)',
+                }}
+              >
+                <MessageSquare size={18} strokeWidth={2} />
+                Mulai Ngobrol
+              </button>
+              <button
+                onClick={() => setMatchScreen(null)}
+                className="w-full text-muted-foreground text-sm py-2.5 hover:text-foreground transition rounded-xl"
+              >
+                Nanti aja
+              </button>
             </div>
           </div>
-
-          {/* Text */}
-          <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">Saling tertarik</p>
-          <h2 className="text-white text-3xl font-bold text-center mb-2" style={{ fontFamily: 'var(--font-display, serif)' }}>
-            Cocok banget!
-          </h2>
-          <p className="text-white/60 text-sm text-center mb-10 leading-relaxed">
-            Kamu dan <span className="text-white font-semibold">{matchScreen.name}</span> sama-sama Say Hi.<br />Mulai ngobrol sekarang!
-          </p>
-
-          {/* CTA */}
-          <button
-            onClick={() => { setMatchScreen(null); router.push(`/chat/${matchScreen.conversationId}`) }}
-            className="w-full max-w-xs py-4 rounded-2xl font-bold text-base text-white mb-3 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            style={{ background: 'linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 60%, #e06060))',
-              boxShadow: '0 8px 32px rgba(197,122,110,0.4)' }}
-          >
-            <MessageSquare size={18} strokeWidth={2} />
-            Mulai Ngobrol
-          </button>
-          <button
-            onClick={() => setMatchScreen(null)}
-            className="text-white/40 text-sm py-2 px-6 hover:text-white/70 transition"
-          >
-            Nanti aja
-          </button>
         </div>
       )}
 
