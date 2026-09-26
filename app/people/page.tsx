@@ -221,12 +221,12 @@ function PeopleHereList() {
   const prevSentHisRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
-    if (!shopId) { router.push('/'); return }
+    if (!shopId) { router.push('/join'); return }
     const supabase = createClient()
 
     async function boot() {
       const { data: auth } = await supabase.auth.getUser()
-      if (!auth.user) { router.push('/'); return }
+      if (!auth.user) { router.push('/join'); return }
       const uid = auth.user.id
       userIdRef.current = uid
       setCurrentUserId(uid)
@@ -271,7 +271,7 @@ function PeopleHereList() {
         setSessionExpiresAt(newExpires)
       } else {
         // No active session — redirect back to entry so GPS is re-verified
-        router.replace('/')
+        router.replace('/join')
         return
       }
 
@@ -615,7 +615,7 @@ function PeopleHereList() {
   }
 
   async function handleExit() {
-    if (!currentUserId) { router.push('/'); return }
+    if (!currentUserId) { router.push('/join'); return }
     setExitLoading(true)
     const supabase = createClient()
     await supabase.from('coffee_shop_sessions')
@@ -623,7 +623,7 @@ function PeopleHereList() {
       .eq('user_id', currentUserId)
       .eq('coffee_shop_id', shopId!)
       .eq('status', 'active')
-    router.push('/')
+    router.push('/join')
   }
 
   async function handleLocationExit() {
@@ -637,7 +637,7 @@ function PeopleHereList() {
         .eq('status', 'active')
     }
     sessionStorage.removeItem('shopContext')
-    router.push('/')
+    router.push('/join')
   }
 
   async function handleSayHi(receiverId: string) {
@@ -1733,7 +1733,7 @@ function PeopleHereList() {
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/join')}
                 className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition"
               >
                 Keluar

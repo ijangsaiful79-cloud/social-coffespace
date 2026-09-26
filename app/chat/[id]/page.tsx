@@ -154,7 +154,7 @@ export default function ChatPage({ params }: Props) {
 
   async function initChat(supabase: ReturnType<typeof createClient>) {
     const { data: auth } = await supabase.auth.getUser()
-    if (!auth.user) { router.push('/'); return }
+    if (!auth.user) { router.push('/join'); return }
 
     const uid = auth.user.id
     currentUserIdRef.current = uid
@@ -164,7 +164,7 @@ export default function ChatPage({ params }: Props) {
     registerPush(uid)
 
     const { data: convo } = await supabase.from('conversations').select('user_one_id, user_two_id').eq('id', conversationId).single()
-    if (!convo) { router.push('/'); return }
+    if (!convo) { router.push('/join'); return }
 
     const otherUid = convo.user_one_id === uid ? convo.user_two_id : convo.user_one_id
     setOtherUserId(otherUid)
@@ -226,7 +226,7 @@ export default function ChatPage({ params }: Props) {
       }
     }
     sessionStorage.removeItem('shopContext')
-    router.push('/')
+    router.push('/join')
   }
 
   function handleLongPressStart(msgId: string, isOwn: boolean) {
@@ -304,7 +304,7 @@ export default function ChatPage({ params }: Props) {
     setActionLoading(false)
     setBlockConfirm(false)
     showToast('Pengguna telah diblokir')
-    setTimeout(() => router.push('/'), 1500)
+    setTimeout(() => router.push('/join'), 1500)
   }
 
   async function handleReport(e: React.FormEvent) {
