@@ -32,7 +32,14 @@ export async function proxy(request: NextRequest) {
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/join'
+    return NextResponse.redirect(url)
+  }
+
+  // Authenticated users hitting the marketing landing page → send to app
+  if (pathname === '/' && user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/join'
     return NextResponse.redirect(url)
   }
 
