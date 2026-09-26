@@ -547,12 +547,15 @@ function PeopleHereList() {
   }
 
   async function fetchPendingLikes(uid: string, supabase: ReturnType<typeof createClient>) {
-    const [{ data: incoming }, { data: convos }] = await Promise.all([
+    const [{ data: incoming }, { data: convos }, { data: activeSessions }] = await Promise.all([
       supabase.from('interactions').select('sender_id').eq('receiver_id', uid).eq('type', 'say_hi'),
       supabase.from('conversations').select('user_one_id, user_two_id').or(`user_one_id.eq.${uid},user_two_id.eq.${uid}`),
+      supabase.from('coffee_shop_sessions').select('user_id').eq('coffee_shop_id', shopId!).eq('status', 'active'),
     ])
     const existingPartners = new Set((convos ?? []).map((c) => c.user_one_id === uid ? c.user_two_id : c.user_one_id))
-    const pending = [...new Set((incoming ?? []).map((i) => i.sender_id))].filter((id) => !existingPartners.has(id) && id !== uid)
+    const stillHere = new Set((activeSessions ?? []).map((s) => s.user_id))
+    const pending = [...new Set((incoming ?? []).map((i) => i.sender_id))]
+      .filter((id) => !existingPartners.has(id) && id !== uid && stillHere.has(id))
     if (pending.length === 0) { setPendingLikes([]); return }
     const { data: profiles } = await supabase.from('profiles').select('*').in('user_id', pending)
     const profileMap = Object.fromEntries((profiles ?? []).map((p) => [p.user_id, p]))
