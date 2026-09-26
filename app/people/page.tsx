@@ -405,6 +405,11 @@ function PeopleHereList() {
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !currentUserId) return
+    const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif']
+    if (!ALLOWED_TYPES.includes(file.type.toLowerCase())) {
+      showToast('Format tidak didukung. Gunakan JPG, PNG, atau WebP.')
+      return
+    }
     // 10 MB raw limit — canvas will compress it down
     if (file.size > 10 * 1024 * 1024) { showToast('Foto terlalu besar. Maksimal 10MB.'); return }
     setAvatarUploading(true)

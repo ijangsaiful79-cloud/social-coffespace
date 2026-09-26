@@ -22,6 +22,14 @@ export async function POST(request: NextRequest) {
   const file = form.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+  if (!ALLOWED_TYPES.includes(file.type.toLowerCase())) {
+    return NextResponse.json({ error: 'File harus berupa gambar (JPG/PNG/WebP)' }, { status: 400 })
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return NextResponse.json({ error: 'Ukuran file maksimal 5MB' }, { status: 400 })
+  }
+
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
   const fileName = `${Date.now()}.jpg`

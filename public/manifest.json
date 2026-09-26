@@ -3,7 +3,7 @@
   "name": "Social Coffé",
   "short_name": "Coffé",
   "description": "Meet people at your coffee shop",
-  "start_url": "/",
+  "start_url": "/join",
   "display": "standalone",
   "background_color": "#F7EEE1",
   "theme_color": "#C57A6E",
