@@ -217,6 +217,8 @@ function PeopleHereList() {
   const reconnectAttemptsRef = useRef(0)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+  // Tracks previous sentHis to detect when mutual match happens (polling-safe)
+  const prevSentHisRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     if (!shopId) { router.push('/'); return }
@@ -555,11 +557,35 @@ function PeopleHereList() {
   async function fetchSentHis(uid: string, supabase: ReturnType<typeof createClient>) {
     const [{ data: outgoing }, { data: convos }] = await Promise.all([
       supabase.from('interactions').select('receiver_id').eq('sender_id', uid).eq('type', 'say_hi'),
-      supabase.from('conversations').select('user_one_id, user_two_id').or(`user_one_id.eq.${uid},user_two_id.eq.${uid}`),
+      supabase.from('conversations').select('id, user_one_id, user_two_id').or(`user_one_id.eq.${uid},user_two_id.eq.${uid}`),
     ])
-    const existingPartners = new Set((convos ?? []).map((c) => c.user_one_id === uid ? c.user_two_id : c.user_one_id))
-    const sent = (outgoing ?? []).map((i) => i.receiver_id).filter((id) => !existingPartners.has(id))
-    setSentHis(new Set(sent))
+    // Map otherId → conversation row (keyed by the other person's user_id)
+    const partnerConvoMap = new Map((convos ?? []).map((c) => {
+      const otherId = c.user_one_id === uid ? c.user_two_id : c.user_one_id
+      return [otherId, c] as [string, typeof c]
+    }))
+    const sent = (outgoing ?? []).map((i: { receiver_id: string }) => i.receiver_id).filter((id) => !partnerConvoMap.has(id))
+    const newSentHis = new Set(sent)
+
+    // Detect mutual match for User A (the one who first sent Say Hi)
+    // When B replies, B's id moves OUT of sentHis and INTO partnerConvoMap
+    for (const prevId of prevSentHisRef.current) {
+      if (!newSentHis.has(prevId) && partnerConvoMap.has(prevId)) {
+        const convo = partnerConvoMap.get(prevId)!
+        const { data: prof } = await supabase
+          .from('profiles').select('display_name, avatar_url').eq('user_id', prevId).single()
+        if (prof) {
+          setMatchScreen((cur) => cur ?? {
+            name: prof.display_name,
+            avatarUrl: prof.avatar_url ?? null,
+            conversationId: convo.id,
+          })
+        }
+      }
+    }
+
+    prevSentHisRef.current = newSentHis
+    setSentHis(newSentHis)
   }
 
   function showToast(msg: string) {
@@ -1246,31 +1272,39 @@ function PeopleHereList() {
             </div>
 
             <div className="px-6 pt-3 pb-[max(32px,env(safe-area-inset-bottom))]">
-              {/* Avatars */}
-              <div className="flex items-center justify-center mb-5">
-                <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0"
-                  style={{ boxShadow: '0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent)' }}>
-                  <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={false} size={72} />
+              {/* Avatars + nama */}
+              <div className="flex items-end justify-center gap-3 mb-5">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-20 h-20 rounded-full overflow-hidden shrink-0"
+                    style={{ boxShadow: '0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent)' }}>
+                    <Avatar name={myProfile?.display_name ?? 'A'} avatarUrl={myProfile?.avatar_url} isAnonymous={false} size={80} />
+                  </div>
+                  <p className="text-xs font-bold text-foreground max-w-[80px] text-center truncate">{myProfile?.display_name ?? 'Kamu'}</p>
                 </div>
-                <div className="mx-4 w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0"
+
+                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0 mb-5"
                   style={{ boxShadow: '0 4px 16px color-mix(in srgb, var(--primary) 45%, transparent)' }}>
                   <Heart size={17} strokeWidth={2.5} color="white" fill="white" />
                 </div>
-                <div className="w-[72px] h-[72px] rounded-full overflow-hidden shrink-0"
-                  style={{ boxShadow: '0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent)' }}>
-                  <Avatar name={matchScreen.name} avatarUrl={matchScreen.avatarUrl} isAnonymous={false} size={72} />
+
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-20 h-20 rounded-full overflow-hidden shrink-0"
+                    style={{ boxShadow: '0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent)' }}>
+                    <Avatar name={matchScreen.name} avatarUrl={matchScreen.avatarUrl} isAnonymous={false} size={80} />
+                  </div>
+                  <p className="text-xs font-bold text-foreground max-w-[80px] text-center truncate">{matchScreen.name}</p>
                 </div>
               </div>
 
               {/* Copy */}
               <div className="text-center mb-6">
-                <p className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mb-1.5">Saling tertarik ☕</p>
+                <p className="text-[11px] font-bold tracking-widest uppercase text-muted-foreground mb-1.5">Sama-sama suka ☕</p>
                 <h2 className="text-2xl font-bold mb-2" style={{ fontFamily: 'var(--font-display, serif)' }}>
                   Cocok banget!
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Kamu dan <span className="font-semibold text-foreground">{matchScreen.name}</span> sama-sama Say Hi.<br />
-                  Mulai ngobrol sekarang!
+                  Sekarang kalian bisa mulai ngobrol!
                 </p>
               </div>
 
